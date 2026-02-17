@@ -3,15 +3,15 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  verifyDetailItem,
+  verifyFileDetailsLine,
   verifyHashsetHash,
-  verifyDescHashInList,
+  verifyFileDetailsHashInList,
 } from '../src/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(__dirname, 'fixtures');
 
-// Regex to extract detail data lines, skipping v1 headers/footers
+// Regex to extract file_details_lines, skipping v1 headers/footers
 const DETAIL_LINE_RE = /^[0-9a-fA-F]{64,128}: /;
 
 function loadFixture(name: string): string {
@@ -24,7 +24,7 @@ function extractDetailLines(content: string): string[] {
 
 describe('legacy v1 verification', () => {
   const detailsContent = loadFixture('legacy-details.txt');
-  const allDescHashes = loadFixture('legacy-all-desc-hashes.txt');
+  const fileDetailsHashList = loadFixture('legacy-all-desc-hashes.txt');
   const detailLines = extractDetailLines(detailsContent);
   const expectedHashsetHash = '9FAD21B5B294809C2766486CA574546BE153E7CD62E5405FD976A92CA59A2D57';
 
@@ -32,22 +32,22 @@ describe('legacy v1 verification', () => {
     expect(detailLines).toHaveLength(6);
   });
 
-  it('each detail line verifies: SHA(hashset_detail_item) == desc_hash', async () => {
+  it('each file_details_line verifies: H(file_details) == file_details_hash', async () => {
     for (const line of detailLines) {
-      const result = await verifyDetailItem(line);
+      const result = await verifyFileDetailsLine(line);
       expect(result.valid).toBe(true);
     }
   });
 
-  it('each desc_hash exists in the all-desc-hashes file', () => {
+  it('each file_details_hash exists in the file_details_hash_list', () => {
     for (const line of detailLines) {
-      const descHash = line.split(': ')[0];
-      expect(verifyDescHashInList(descHash, allDescHashes)).toBe(true);
+      const fileDetailsHash = line.split(': ')[0];
+      expect(verifyFileDetailsHashInList(fileDetailsHash, fileDetailsHashList)).toBe(true);
     }
   });
 
-  it('hashset_hash matches all-desc-hashes', async () => {
-    const valid = await verifyHashsetHash(allDescHashes, expectedHashsetHash);
+  it('hashset_hash matches file_details_hash_list', async () => {
+    const valid = await verifyHashsetHash(fileDetailsHashList, expectedHashsetHash);
     expect(valid).toBe(true);
   });
 });

@@ -1,7 +1,7 @@
 import {
-  verifyDetailItem,
+  verifyFileDetailsLine,
   verifyHashsetHash,
-  verifyDescHashInList,
+  verifyFileDetailsHashInList,
   inferAlgorithm,
 } from '@proofset/core';
 import * as fs from 'node:fs';
@@ -10,23 +10,23 @@ import * as path from 'node:path';
 // Matches a detail line: 64 or 128 hex chars, then ": ", then the rest
 const DETAIL_LINE_RE = /^[0-9a-fA-F]{64,128}: /;
 
-/** Extract only detail data lines from a details file, skipping v1 headers/footers. */
+/** Extract only file_details_lines from a details file, skipping v1 headers/footers. */
 function extractDetailLines(content: string): string[] {
   return content.split(/\r?\n/).filter((line) => DETAIL_LINE_RE.test(line));
 }
 
 export async function verifyCommand(options: {
   details?: string;
-  allDescHashes?: string;
+  fileDetailsHashList?: string;
   item?: string;
   hash?: string;
 }): Promise<void> {
-  const { details, allDescHashes: allDescHashesFile, item, hash } = options;
+  const { details, fileDetailsHashList: hashListFile, item, hash } = options;
 
-  // Mode 1: Full verify — details file + all-desc-hashes file
-  if (details && allDescHashesFile) {
+  // Mode 1: Full verify — details file + file-details-hash-list file
+  if (details && hashListFile) {
     const detailsContent = fs.readFileSync(path.resolve(details), 'utf-8');
-    const allDescHashes = fs.readFileSync(path.resolve(allDescHashesFile), 'utf-8');
+    const fileDetailsHashList = fs.readFileSync(path.resolve(hashListFile), 'utf-8');
     const lines = extractDetailLines(detailsContent);
 
     if (lines.length === 0) {
@@ -36,23 +36,23 @@ export async function verifyCommand(options: {
 
     let allValid = true;
     for (const line of lines) {
-      const result = await verifyDetailItem(line);
+      const result = await verifyFileDetailsLine(line);
       if (!result.valid) {
-        console.error(`FAIL: ${result.descHash}`);
+        console.error(`FAIL: ${result.fileDetailsHash}`);
         allValid = false;
       } else {
-        const inList = verifyDescHashInList(result.descHash, allDescHashes);
+        const inList = verifyFileDetailsHashInList(result.fileDetailsHash, fileDetailsHashList);
         if (!inList) {
-          console.error(`FAIL: desc_hash not in all-desc-hashes: ${result.descHash}`);
+          console.error(`FAIL: file_details_hash not in hash list: ${result.fileDetailsHash}`);
           allValid = false;
         }
       }
     }
 
-    // Compute hashset_hash from all_desc_hashes and display
+    // Compute hashset_hash from file_details_hash_list and display
     const algorithm = inferAlgorithm(lines[0].split(':')[0]);
     const hashBytes = await import('@proofset/core').then((m) =>
-      m.hashBytes(new TextEncoder().encode(allDescHashes), algorithm),
+      m.hashBytes(new TextEncoder().encode(fileDetailsHashList), algorithm),
     );
     console.log(`hashset_hash: ${hashBytes}`);
 
@@ -66,34 +66,34 @@ export async function verifyCommand(options: {
   }
 
   // Mode 2: Single item verify
-  if (item && allDescHashesFile) {
-    const allDescHashes = fs.readFileSync(path.resolve(allDescHashesFile), 'utf-8');
+  if (item && hashListFile) {
+    const fileDetailsHashList = fs.readFileSync(path.resolve(hashListFile), 'utf-8');
 
-    const result = await verifyDetailItem(item);
+    const result = await verifyFileDetailsLine(item);
     if (!result.valid) {
-      console.error(`FAIL: SHA(hashset_detail_item) != desc_hash`);
+      console.error(`FAIL: H(file_details) != file_details_hash`);
       process.exit(1);
     }
-    console.log(`desc_hash verified: ${result.descHash}`);
+    console.log(`file_details_hash verified: ${result.fileDetailsHash}`);
 
-    const inList = verifyDescHashInList(result.descHash, allDescHashes);
+    const inList = verifyFileDetailsHashInList(result.fileDetailsHash, fileDetailsHashList);
     if (!inList) {
-      console.error(`FAIL: desc_hash not found in all-desc-hashes file`);
+      console.error(`FAIL: file_details_hash not found in hash list file`);
       process.exit(1);
     }
-    console.log(`desc_hash found in all-desc-hashes.`);
+    console.log(`file_details_hash found in hash list.`);
     return;
   }
 
-  // Mode 3: Hash check — all-desc-hashes file + expected hashset_hash
-  if (allDescHashesFile && hash) {
-    const allDescHashes = fs.readFileSync(path.resolve(allDescHashesFile), 'utf-8');
+  // Mode 3: Hash check — file-details-hash-list file + expected hashset_hash
+  if (hashListFile && hash) {
+    const fileDetailsHashList = fs.readFileSync(path.resolve(hashListFile), 'utf-8');
 
-    const valid = await verifyHashsetHash(allDescHashes, hash);
+    const valid = await verifyHashsetHash(fileDetailsHashList, hash);
     if (valid) {
-      console.log('Verified: hashset_hash matches all-desc-hashes.');
+      console.log('Verified: hashset_hash matches file details hash list.');
     } else {
-      console.error('FAIL: hashset_hash does not match all-desc-hashes.');
+      console.error('FAIL: hashset_hash does not match file details hash list.');
       process.exit(1);
     }
     return;
@@ -101,9 +101,9 @@ export async function verifyCommand(options: {
 
   console.error(
     'Invalid options. Use one of:\n' +
-      '  proofset verify -d <details> -a <all-desc-hashes>\n' +
-      '  proofset verify -i "<detail-line>" -a <all-desc-hashes>\n' +
-      '  proofset verify -a <all-desc-hashes> -h <hashset_hash>',
+      '  proofset verify -d <details> -a <file-details-hash-list>\n' +
+      '  proofset verify -i "<detail-line>" -a <file-details-hash-list>\n' +
+      '  proofset verify -a <file-details-hash-list> -h <hashset_hash>',
   );
   process.exit(1);
 }

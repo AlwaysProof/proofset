@@ -103,11 +103,11 @@ export async function createCommand(options: {
   // Write output files
   fs.writeFileSync(
     path.join(outputDir, 'proofset-details.txt'),
-    result.detailsText,
+    result.fileDetailsLineList,
   );
   fs.writeFileSync(
-    path.join(outputDir, 'proofset-all-desc-hashes.txt'),
-    result.allDescHashes,
+    path.join(outputDir, 'proofset-file-details-hash-list.txt'),
+    result.fileDetailsHashList,
   );
 
   console.log(result.hashsetHash);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createProofset, verifyDetailItem, verifyHashsetHash, verifyDescHashInList } from '../src/index.js';
+import { createProofset, verifyFileDetailsLine, verifyHashsetHash, verifyFileDetailsHashInList } from '../src/index.js';
 import type { SourceFileEntry } from '../src/index.js';
 
 // Test vectors from `proofset create -s example1/source-files -o example1-output -p abc`
@@ -45,7 +45,7 @@ async function* iterFiles(files: SourceFileEntry[]): AsyncIterable<SourceFileEnt
 }
 
 // Expected values from actual CLI output (all lowercase)
-const expectedDescHashes = [
+const expectedFileDetailsHashes = [
   'd0c36edf99a7ea0e9e0459401cbb2191da2130a7cb420c8449a51f8e4b7562d7',
   'a8f88cd6569e5ffcddbfc4905e02586fb82d88f284fec54cd869e0bd8fc2550e',
   'd1cffc21953a7854a9e99ea4e3969ba0c91a57986d40bf4580b7ff30aaaef7e0',
@@ -54,7 +54,7 @@ const expectedDescHashes = [
   '68c89abc9a75e5a13aaa726201b7bef305aa7e91a44ee68ad57e2b7f89205f20',
 ];
 
-const expectedFileDescSecrets = [
+const expectedFileSecrets = [
   'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
   '2695e12caf1d559b5cbe944c034837bb06751f40472e5d458fc05b69e69f72fb',
   '4f02bb91c30e1c78e4c3f2291dff5fe96f4c3d1a3dbd89f5e22f94bd19a89264',
@@ -84,26 +84,26 @@ const expectedPaths = [
 const expectedHashsetHash = '0c8dd3e854c87df9e2af078792973bdcd2d97b365d61cd1f33c0961efd7a8839';
 
 describe('createProofset', () => {
-  it('produces correct desc_hashes for all 6 entries', async () => {
+  it('produces correct file_details_hashes for all 6 entries', async () => {
     const result = await createProofset(iterFiles(testFiles), {
       seedPassword: 'abc',
       algorithm: 'SHA-256',
     });
 
-    expect(result.details).toHaveLength(6);
+    expect(result.fileDetails).toHaveLength(6);
     for (let i = 0; i < 6; i++) {
-      expect(result.details[i].descHash).toBe(expectedDescHashes[i]);
+      expect(result.fileDetails[i].fileDetailsHash).toBe(expectedFileDetailsHashes[i]);
     }
   });
 
-  it('produces correct file_desc_secret chain', async () => {
+  it('produces correct file_secret chain', async () => {
     const result = await createProofset(iterFiles(testFiles), {
       seedPassword: 'abc',
       algorithm: 'SHA-256',
     });
 
     for (let i = 0; i < 6; i++) {
-      expect(result.details[i].fileDescSecret).toBe(expectedFileDescSecrets[i]);
+      expect(result.fileDetails[i].fileSecret).toBe(expectedFileSecrets[i]);
     }
   });
 
@@ -114,7 +114,7 @@ describe('createProofset', () => {
     });
 
     for (let i = 0; i < 6; i++) {
-      expect(result.details[i].contentHash).toBe(expectedContentHashes[i]);
+      expect(result.fileDetails[i].contentHash).toBe(expectedContentHashes[i]);
     }
   });
 
@@ -125,7 +125,7 @@ describe('createProofset', () => {
     });
 
     for (let i = 0; i < 6; i++) {
-      expect(result.details[i].filePath).toBe(expectedPaths[i]);
+      expect(result.fileDetails[i].filePath).toBe(expectedPaths[i]);
     }
   });
 
@@ -138,23 +138,23 @@ describe('createProofset', () => {
     expect(result.hashsetHash).toBe(expectedHashsetHash);
   });
 
-  it('produces correct all_desc_hashes with \\r\\n terminators', async () => {
+  it('produces correct file_details_hash_list with \\r\\n terminators', async () => {
     const result = await createProofset(iterFiles(testFiles), {
       seedPassword: 'abc',
       algorithm: 'SHA-256',
     });
 
-    const expected = expectedDescHashes.map((h) => h + '\r\n').join('');
-    expect(result.allDescHashes).toBe(expected);
+    const expected = expectedFileDetailsHashes.map((h) => h + '\r\n').join('');
+    expect(result.fileDetailsHashList).toBe(expected);
   });
 
-  it('detailsText contains properly formatted lines (all lowercase hex)', async () => {
+  it('fileDetailsLineList contains properly formatted lines (all lowercase hex)', async () => {
     const result = await createProofset(iterFiles(testFiles), {
       seedPassword: 'abc',
       algorithm: 'SHA-256',
     });
 
-    const lines = result.detailsText.trimEnd().split('\r\n');
+    const lines = result.fileDetailsLineList.trimEnd().split('\r\n');
     expect(lines).toHaveLength(6);
     for (const line of lines) {
       expect(line).toMatch(/^[0-9a-f]{64}: [0-9a-f]{64} \d{8}-\d{6} [0-9a-f]{64}  .+$/);
@@ -173,33 +173,33 @@ describe('createProofset', () => {
       algorithm: 'SHA-256',
     });
 
-    expect(result.details).toHaveLength(3);
+    expect(result.fileDetails).toHaveLength(3);
   });
 });
 
 describe('verification', () => {
-  it('verifyDetailItem validates correct detail lines', async () => {
+  it('verifyFileDetailsLine validates correct detail lines', async () => {
     const result = await createProofset(iterFiles(testFiles), {
       seedPassword: 'abc',
       algorithm: 'SHA-256',
     });
 
-    const lines = result.detailsText.trimEnd().split('\r\n');
+    const lines = result.fileDetailsLineList.trimEnd().split('\r\n');
     for (const line of lines) {
-      const verification = await verifyDetailItem(line);
+      const verification = await verifyFileDetailsLine(line);
       expect(verification.valid).toBe(true);
     }
   });
 
-  it('verifyDetailItem detects tampered detail lines', async () => {
+  it('verifyFileDetailsLine detects tampered detail lines', async () => {
     const result = await createProofset(iterFiles(testFiles), {
       seedPassword: 'abc',
       algorithm: 'SHA-256',
     });
 
-    const lines = result.detailsText.trimEnd().split('\r\n');
+    const lines = result.fileDetailsLineList.trimEnd().split('\r\n');
     const tampered = lines[0].slice(0, -5) + 'XXXXX';
-    const verification = await verifyDetailItem(tampered);
+    const verification = await verifyFileDetailsLine(tampered);
     expect(verification.valid).toBe(false);
   });
 
@@ -209,7 +209,7 @@ describe('verification', () => {
       algorithm: 'SHA-256',
     });
 
-    const valid = await verifyHashsetHash(result.allDescHashes, result.hashsetHash);
+    const valid = await verifyHashsetHash(result.fileDetailsHashList, result.hashsetHash);
     expect(valid).toBe(true);
   });
 
@@ -219,27 +219,27 @@ describe('verification', () => {
       algorithm: 'SHA-256',
     });
 
-    const valid = await verifyHashsetHash(result.allDescHashes, 'deadbeef'.repeat(8));
+    const valid = await verifyHashsetHash(result.fileDetailsHashList, 'deadbeef'.repeat(8));
     expect(valid).toBe(false);
   });
 
-  it('verifyDescHashInList finds existing desc_hash', async () => {
+  it('verifyFileDetailsHashInList finds existing file_details_hash', async () => {
     const result = await createProofset(iterFiles(testFiles), {
       seedPassword: 'abc',
       algorithm: 'SHA-256',
     });
 
-    for (const detail of result.details) {
-      expect(verifyDescHashInList(detail.descHash, result.allDescHashes)).toBe(true);
+    for (const detail of result.fileDetails) {
+      expect(verifyFileDetailsHashInList(detail.fileDetailsHash, result.fileDetailsHashList)).toBe(true);
     }
   });
 
-  it('verifyDescHashInList rejects missing desc_hash', async () => {
+  it('verifyFileDetailsHashInList rejects missing file_details_hash', async () => {
     const result = await createProofset(iterFiles(testFiles), {
       seedPassword: 'abc',
       algorithm: 'SHA-256',
     });
 
-    expect(verifyDescHashInList('deadbeef'.repeat(8), result.allDescHashes)).toBe(false);
+    expect(verifyFileDetailsHashInList('deadbeef'.repeat(8), result.fileDetailsHashList)).toBe(false);
   });
 });

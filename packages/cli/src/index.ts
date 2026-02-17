@@ -24,7 +24,7 @@ program
   .command('verify')
   .description('Verify a proofset or individual items')
   .option('-d, --details <file>', 'Details file path')
-  .option('-a, --all-desc-hashes <file>', 'All-desc-hashes file path')
+  .option('-a, --file-details-hash-list <file>', 'File details hash list file path')
   .option('-i, --item <line>', 'Single detail line to verify')
   .option('-h, --hash <hash>', 'Expected hashset_hash to verify against')
   .action(verifyCommand);

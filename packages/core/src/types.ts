@@ -12,9 +12,9 @@ export interface ProofsetConfig {
   algorithm: HashAlgorithm;
 }
 
-export interface ProofsetDetailItem {
-  descHash: string;
-  fileDescSecret: string;
+export interface ProofsetFileDetails {
+  fileDetailsHash: string;
+  fileSecret: string;
   modifiedTimeUtc: string;
   contentHash: string;
   filePath: string;
@@ -22,7 +22,7 @@ export interface ProofsetDetailItem {
 
 export interface ProofsetResult {
   hashsetHash: string;
-  allDescHashes: string;
-  details: ProofsetDetailItem[];
-  detailsText: string;
+  fileDetailsHashList: string;
+  fileDetails: ProofsetFileDetails[];
+  fileDetailsLineList: string;
 }

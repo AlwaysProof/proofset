@@ -8,39 +8,39 @@ export function inferAlgorithm(hexHash: string): HashAlgorithm {
 }
 
 /**
- * Verify a single detail line: `<desc_hash>: <hashset_detail_item>`
- * Checks that SHA(hashset_detail_item) === desc_hash.
+ * Verify a single file_details_line: `<file_details_hash>: <file_details>`
+ * Checks that H(file_details) === file_details_hash.
  */
-export async function verifyDetailItem(
+export async function verifyFileDetailsLine(
   detailLine: string,
-): Promise<{ valid: boolean; descHash: string }> {
+): Promise<{ valid: boolean; fileDetailsHash: string }> {
   const colonIdx = detailLine.indexOf(': ');
   if (colonIdx === -1) {
     throw new Error('Invalid detail line format: missing ": " separator');
   }
-  const descHash = detailLine.slice(0, colonIdx);
-  const hashsetDetailItem = detailLine.slice(colonIdx + 2);
-  const algorithm = inferAlgorithm(descHash);
-  const computed = await hashString(hashsetDetailItem, algorithm);
-  return { valid: computed === descHash.toLowerCase(), descHash };
+  const fileDetailsHash = detailLine.slice(0, colonIdx);
+  const fileDetails = detailLine.slice(colonIdx + 2);
+  const algorithm = inferAlgorithm(fileDetailsHash);
+  const computed = await hashString(fileDetails, algorithm);
+  return { valid: computed === fileDetailsHash.toLowerCase(), fileDetailsHash };
 }
 
 /**
- * Verify hashset_hash: SHA(all_desc_hashes) === expected hashset_hash.
+ * Verify hashset_hash: H(file_details_hash_list) === expected hashset_hash.
  */
 export async function verifyHashsetHash(
-  allDescHashes: string,
+  fileDetailsHashList: string,
   expectedHashsetHash: string,
 ): Promise<boolean> {
   const algorithm = inferAlgorithm(expectedHashsetHash);
-  const computed = await hashBytes(new TextEncoder().encode(allDescHashes), algorithm);
+  const computed = await hashBytes(new TextEncoder().encode(fileDetailsHashList), algorithm);
   return computed === expectedHashsetHash.toLowerCase();
 }
 
 /**
- * Verify a desc_hash exists in the all_desc_hashes list.
+ * Verify a file_details_hash exists in the file_details_hash_list.
  */
-export function verifyDescHashInList(descHash: string, allDescHashes: string): boolean {
-  const hashes = allDescHashes.split('\r\n').filter(Boolean);
-  return hashes.some((h) => h.toLowerCase() === descHash.toLowerCase());
+export function verifyFileDetailsHashInList(fileDetailsHash: string, fileDetailsHashList: string): boolean {
+  const hashes = fileDetailsHashList.split('\r\n').filter(Boolean);
+  return hashes.some((h) => h.toLowerCase() === fileDetailsHash.toLowerCase());
 }

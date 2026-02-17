@@ -1,15 +1,15 @@
 export { createProofset } from './proofset.js';
 export {
   inferAlgorithm,
-  verifyDetailItem,
+  verifyFileDetailsLine,
   verifyHashsetHash,
-  verifyDescHashInList,
+  verifyFileDetailsHashInList,
 } from './verify.js';
 export { hashString, hashBytes } from './hash.js';
 export type {
   HashAlgorithm,
   SourceFileEntry,
   ProofsetConfig,
-  ProofsetDetailItem,
+  ProofsetFileDetails,
   ProofsetResult,
 } from './types.js';

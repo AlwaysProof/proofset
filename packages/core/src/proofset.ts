@@ -2,7 +2,7 @@ import type {
   HashAlgorithm,
   SourceFileEntry,
   ProofsetConfig,
-  ProofsetDetailItem,
+  ProofsetFileDetails,
   ProofsetResult,
 } from './types.js';
 import { hashString, hashBytes } from './hash.js';
@@ -17,14 +17,14 @@ function formatModifiedTime(date: Date): string {
   return `${y}${mo}${d}-${h}${mi}${s}`;
 }
 
-function buildDetailString(
-  fileDescSecret: string,
+function buildFileDetails(
+  fileSecret: string,
   modifiedTimeUtc: string,
   contentHash: string,
   filePath: string,
 ): string {
-  // file_desc_secret + ' ' + modified_time + ' ' + content_hash + '  ' + file_path
-  return `${fileDescSecret} ${modifiedTimeUtc} ${contentHash}  ${filePath}`;
+  // file_secret + ' ' + modified_time + ' ' + content_hash + '  ' + file_path
+  return `${fileSecret} ${modifiedTimeUtc} ${contentHash}  ${filePath}`;
 }
 
 export async function createProofset(
@@ -33,14 +33,14 @@ export async function createProofset(
 ): Promise<ProofsetResult> {
   const { seedPassword, algorithm } = config;
 
-  let prevFileDescSecret: string | null = null;
-  let prevDescHash: string | null = null;
-  const details: ProofsetDetailItem[] = [];
-  let allDescHashes = '';
-  const detailLines: string[] = [];
+  let prevFileSecret: string | null = null;
+  let prevFileDetailsHash: string | null = null;
+  const fileDetails: ProofsetFileDetails[] = [];
+  let fileDetailsHashList = '';
+  const fileDetailsLines: string[] = [];
 
-  // First file_desc_secret = H(seed_password)
-  let fileDescSecret = await hashString(seedPassword, algorithm);
+  // First file_secret = H(seed_password)
+  let fileSecret = await hashString(seedPassword, algorithm);
 
   for await (const file of files) {
     const contentHash = await hashBytes(file.content, algorithm);
@@ -54,40 +54,40 @@ export async function createProofset(
     paths.push(file.relativePath);
 
     for (const filePath of paths) {
-      // For the very first entry, fileDescSecret is already set.
-      // For subsequent entries, compute new file_desc_secret.
-      if (prevFileDescSecret !== null && prevDescHash !== null) {
-        fileDescSecret = await hashString(
-          seedPassword + prevFileDescSecret + prevDescHash,
+      // For the very first entry, fileSecret is already set.
+      // For subsequent entries, compute new file_secret.
+      if (prevFileSecret !== null && prevFileDetailsHash !== null) {
+        fileSecret = await hashString(
+          seedPassword + prevFileSecret + prevFileDetailsHash,
           algorithm,
         );
       }
 
-      const detailStr = buildDetailString(fileDescSecret, modifiedTimeUtc, contentHash, filePath);
-      const descHash = await hashString(detailStr, algorithm);
+      const detailStr = buildFileDetails(fileSecret, modifiedTimeUtc, contentHash, filePath);
+      const fdHash = await hashString(detailStr, algorithm);
 
-      details.push({
-        descHash,
-        fileDescSecret,
+      fileDetails.push({
+        fileDetailsHash: fdHash,
+        fileSecret,
         modifiedTimeUtc,
         contentHash,
         filePath,
       });
 
-      allDescHashes += descHash + '\r\n';
-      detailLines.push(`${descHash}: ${detailStr}`);
+      fileDetailsHashList += fdHash + '\r\n';
+      fileDetailsLines.push(`${fdHash}: ${detailStr}`);
 
-      prevFileDescSecret = fileDescSecret;
-      prevDescHash = descHash;
+      prevFileSecret = fileSecret;
+      prevFileDetailsHash = fdHash;
     }
   }
 
-  const hashsetHash = await hashBytes(new TextEncoder().encode(allDescHashes), algorithm);
+  const hashsetHash = await hashBytes(new TextEncoder().encode(fileDetailsHashList), algorithm);
 
   return {
     hashsetHash,
-    allDescHashes,
-    details,
-    detailsText: detailLines.join('\r\n') + '\r\n',
+    fileDetailsHashList,
+    fileDetails,
+    fileDetailsLineList: fileDetailsLines.join('\r\n') + '\r\n',
   };
 }

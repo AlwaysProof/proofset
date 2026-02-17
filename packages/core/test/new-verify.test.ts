@@ -3,9 +3,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  verifyDetailItem,
+  verifyFileDetailsLine,
   verifyHashsetHash,
-  verifyDescHashInList,
+  verifyFileDetailsHashInList,
 } from '../src/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -17,7 +17,7 @@ function loadFixture(name: string): string {
 
 describe('new format fixture verification', () => {
   const detailsContent = loadFixture('new-details.txt');
-  const allDescHashes = loadFixture('new-all-desc-hashes.txt');
+  const fileDetailsHashList = loadFixture('new-all-desc-hashes.txt');
   const detailLines = detailsContent.split(/\r?\n/).filter(Boolean);
   const expectedHashsetHash = '0c8dd3e854c87df9e2af078792973bdcd2d97b365d61cd1f33c0961efd7a8839';
 
@@ -25,22 +25,22 @@ describe('new format fixture verification', () => {
     expect(detailLines).toHaveLength(6);
   });
 
-  it('each detail line verifies: SHA(hashset_detail_item) == desc_hash', async () => {
+  it('each file_details_line verifies: H(file_details) == file_details_hash', async () => {
     for (const line of detailLines) {
-      const result = await verifyDetailItem(line);
+      const result = await verifyFileDetailsLine(line);
       expect(result.valid).toBe(true);
     }
   });
 
-  it('each desc_hash exists in the all-desc-hashes file', () => {
+  it('each file_details_hash exists in the file_details_hash_list', () => {
     for (const line of detailLines) {
-      const descHash = line.split(': ')[0];
-      expect(verifyDescHashInList(descHash, allDescHashes)).toBe(true);
+      const fileDetailsHash = line.split(': ')[0];
+      expect(verifyFileDetailsHashInList(fileDetailsHash, fileDetailsHashList)).toBe(true);
     }
   });
 
-  it('hashset_hash matches all-desc-hashes', async () => {
-    const valid = await verifyHashsetHash(allDescHashes, expectedHashsetHash);
+  it('hashset_hash matches file_details_hash_list', async () => {
+    const valid = await verifyHashsetHash(fileDetailsHashList, expectedHashsetHash);
     expect(valid).toBe(true);
   });
 });
