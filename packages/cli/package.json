@@ -1,0 +1,20 @@
+{
+  "name": "@proofset/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "proofset": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@proofset/core": "*",
+    "commander": "^13.0.0",
+    "fast-glob": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
+}
