@@ -2,24 +2,13 @@ import {
   verifyFileDetailsLine,
   verifyHashsetHash,
   verifyFileDetailsHashInList,
+  extractDetailLines,
+  buildHashListFromDetailLines,
   inferAlgorithm,
   hashBytes,
 } from '@proofset/core';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-
-// Matches a detail line: 64 or 128 hex chars, then ": ", then the rest
-const DETAIL_LINE_RE = /^[0-9a-fA-F]{64,128}: /;
-
-/** Extract only file_details_lines from a details file, skipping v1 headers/footers. */
-function extractDetailLines(content: string): string[] {
-  return content.split(/\r?\n/).filter((line) => DETAIL_LINE_RE.test(line));
-}
-
-/** Build a file_details_hash_list from detail lines (hashes joined with \r\n). */
-function buildHashListFromDetailLines(lines: string[]): string {
-  return lines.map((line) => line.split(': ')[0]).join('\r\n') + '\r\n';
-}
 
 export async function verifyCommand(options: {
   details?: string;

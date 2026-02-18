@@ -4,6 +4,8 @@ export {
   verifyFileDetailsLine,
   verifyHashsetHash,
   verifyFileDetailsHashInList,
+  extractDetailLines,
+  buildHashListFromDetailLines,
 } from './verify.js';
 export { hashString, hashBytes } from './hash.js';
 export type {

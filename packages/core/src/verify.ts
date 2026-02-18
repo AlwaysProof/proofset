@@ -44,3 +44,20 @@ export function verifyFileDetailsHashInList(fileDetailsHash: string, fileDetails
   const hashes = fileDetailsHashList.split('\r\n').filter(Boolean);
   return hashes.some((h) => h.toLowerCase() === fileDetailsHash.toLowerCase());
 }
+
+// Matches a detail line: 64 or 128 hex chars, then ": ", then the rest
+const DETAIL_LINE_RE = /^[0-9a-fA-F]{64,128}: /;
+
+/**
+ * Extract file_details_lines from a details file/string, skipping v1 headers/footers.
+ */
+export function extractDetailLines(content: string): string[] {
+  return content.split(/\r?\n/).filter((line) => DETAIL_LINE_RE.test(line));
+}
+
+/**
+ * Build a file_details_hash_list from detail lines (hashes joined with \r\n).
+ */
+export function buildHashListFromDetailLines(lines: string[]): string {
+  return lines.map((line) => line.split(': ')[0]).join('\r\n') + '\r\n';
+}
