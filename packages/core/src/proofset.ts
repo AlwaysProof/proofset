@@ -23,8 +23,8 @@ function buildFileDetails(
   contentHash: string,
   filePath: string,
 ): string {
-  // file_secret + ' ' + modified_time + ' ' + content_hash + '  ' + file_path
-  return `${fileSecret} ${modifiedTimeUtc} ${contentHash}  ${filePath}`;
+  // file_secret + ' ' + modified_time + ' ' + content_hash + ' ' + file_path
+  return `${fileSecret} ${modifiedTimeUtc} ${contentHash} ${filePath}`;
 }
 
 export async function createProofset(

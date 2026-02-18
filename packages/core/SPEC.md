@@ -54,7 +54,7 @@ Each file may produce one or two entries (see [Section 2.4](#24-path-variants)).
 For each entry, a `file_details` string is constructed by concatenating the entry's fields with specific delimiters:
 
 ```
-file_details = file_secret ‖ SP ‖ file_modified_time_utc ‖ SP ‖ file_content_hash ‖ SP ‖ SP ‖ file_path
+file_details = file_secret ‖ SP ‖ file_modified_time_utc ‖ SP ‖ file_content_hash ‖ SP ‖ file_path
 ```
 
 The file details hash is then:
@@ -63,7 +63,9 @@ The file details hash is then:
 file_details_hash = H(file_details)    -- lowercase hex
 ```
 
-> **Note:** There are **two** spaces between `file_content_hash` and `file_path`. All other fields are separated by a single space.
+All fields are separated by a single space.
+
+> **v1 note:** The v1 proof-of-concept used **two** spaces between `file_content_hash` and `file_path`. Verification is unaffected — the verifier hashes the entire `file_details` string as-is, so both single-space and double-space detail lines verify correctly.
 
 ### 2.3 Hashset Hash
 
@@ -183,17 +185,17 @@ Generated with: `proofset create -s example1/source-files -o example1-output -p 
 
 | # | file\_details\_hash | file\_secret | modified\_time\_utc | file\_content\_hash | file\_path |
 |---|-----------|-------------------|--------------------|--------------------|-----------|
-| 0 | `d0c36edf...62d7` | `ba7816bf...0015ad` | `20260217-003735` | `ebe2f179...02fbe` | `dir1\file2.txt` |
-| 1 | `a8f88cd6...550e` | `2695e12c...f72fb` | `20260217-003735` | `ebe2f179...02fbe` | `file2.txt` |
-| 2 | `d1cffc21...f7e0` | `4f02bb91...89264` | `20260217-003740` | `79c3002f...f1642` | `dir1\file3.txt` |
-| 3 | `71af4a25...6f60` | `7685db39...8ea86` | `20260217-003740` | `79c3002f...f1642` | `file3.txt` |
-| 4 | `6eacbb70...9291` | `7e7f3ad7...bf78a` | `20260216-231401` | `17aa66d0...a5be` | `file1.txt` |
-| 5 | `68c89abc...5f20` | `df0b7c82...6d656` | `20260216-231401` | `17aa66d0...a5be` | `file1.txt` |
+| 0 | `5105d416...0c0c` | `ba7816bf...0015ad` | `20260217-003735` | `ebe2f179...02fbe` | `dir1\file2.txt` |
+| 1 | `23f05dc8...31d6` | `07eed9d5...d0340` | `20260217-003735` | `ebe2f179...02fbe` | `file2.txt` |
+| 2 | `c6f158c7...b672` | `89775203...92dd` | `20260217-003740` | `79c3002f...f1642` | `dir1\file3.txt` |
+| 3 | `a169a66a...7317` | `4f17b1ec...4d2e` | `20260217-003740` | `79c3002f...f1642` | `file3.txt` |
+| 4 | `32c6ce33...58ac` | `13de26ac...5257` | `20260216-231401` | `17aa66d0...a5be` | `file1.txt` |
+| 5 | `c9db5d8f...d29a` | `62838a69...46bc` | `20260216-231401` | `17aa66d0...a5be` | `file1.txt` |
 
 ### 6.3 Expected Hashset Hash
 
 ```
-hashset_hash = 0c8dd3e854c87df9e2af078792973bdcd2d97b365d61cd1f33c0961efd7a8839
+hashset_hash = ea361143c639c8f51b8a89ce1891c25d8809edd0e406aa1adf319bd169e43e84
 ```
 
 ### 6.4 Full Test Vector Values
@@ -203,7 +205,7 @@ hashset_hash = 0c8dd3e854c87df9e2af078792973bdcd2d97b365d61cd1f33c0961efd7a8839
 
 **Entry 0:**
 ```
-file_details_hash:         d0c36edf99a7ea0e9e0459401cbb2191da2130a7cb420c8449a51f8e4b7562d7
+file_details_hash:         5105d416f19ada8bfae9fa5f4ad6b8c28141fd3317fa48ff41b4774486f50c0c
 file_secret:  ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
 file_content_hash: ebe2f17920521e0d6a11da34a26c322e7db871a54381fda89522c861a9602fbe
 file_path:         dir1\file2.txt
@@ -211,57 +213,57 @@ file_path:         dir1\file2.txt
 
 **Entry 1:**
 ```
-file_details_hash:         a8f88cd6569e5ffcddbfc4905e02586fb82d88f284fec54cd869e0bd8fc2550e
-file_secret:  2695e12caf1d559b5cbe944c034837bb06751f40472e5d458fc05b69e69f72fb
+file_details_hash:         23f05dc8fc59f8d6114f478cb69657f25bc717590397a18a11afa273ef2131d6
+file_secret:  07eed9d508eb54bb0dda5a614ede22f0f1d77fb26c1a21add817507cdf2d0340
 file_content_hash: ebe2f17920521e0d6a11da34a26c322e7db871a54381fda89522c861a9602fbe
 file_path:         file2.txt
 ```
 
 **Entry 2:**
 ```
-file_details_hash:         d1cffc21953a7854a9e99ea4e3969ba0c91a57986d40bf4580b7ff30aaaef7e0
-file_secret:  4f02bb91c30e1c78e4c3f2291dff5fe96f4c3d1a3dbd89f5e22f94bd19a89264
+file_details_hash:         c6f158c7f7cb22ae57b0343ac8b1a6fafc43e1d6a96b5b90a268436e7b86b672
+file_secret:  89775203b482402f793c89a065241b108e6e3250ff1cce93bc06c9764deb92dd
 file_content_hash: 79c3002f6edeca649b1c1f30ade00cc184320d0a56463d53fd760f0e85ff1642
 file_path:         dir1\file3.txt
 ```
 
 **Entry 3:**
 ```
-file_details_hash:         71af4a250b03ed4becbc347da32a9accbb20c10327bcc183c2aa5c559bd16f60
-file_secret:  7685db39608c4ede8e044af61842dde58d12dd49f0b10be614242a619548ea86
+file_details_hash:         a169a66a1050a5bcdd700ce6f288151e26336da6f763e6d5559166676bf77317
+file_secret:  4f17b1ec352a872cacae08646997e12d9194c13fd537f7d33ff3b7124cf24d2e
 file_content_hash: 79c3002f6edeca649b1c1f30ade00cc184320d0a56463d53fd760f0e85ff1642
 file_path:         file3.txt
 ```
 
 **Entry 4:**
 ```
-file_details_hash:         6eacbb704099891e675ba07a9209e15844ce95b96d6731c2a7fa713275569291
-file_secret:  7e7f3ad7392cd307dd3183ac8ef2ef7cf712f08e0a08608084b9527df99bf78a
+file_details_hash:         32c6ce33af843d522422174461a29cce4196648e67a557edf1b4df94f72558ac
+file_secret:  13de26aca1dd9390225a47a2618d25fe84d08008a5c056942c1595428b185257
 file_content_hash: 17aa66d07b0254b8a86e61dd14b8fc0f2b6dd4fb93e545f343ba0604d4a9a5be
 file_path:         file1.txt
 ```
 
 **Entry 5:**
 ```
-file_details_hash:         68c89abc9a75e5a13aaa726201b7bef305aa7e91a44ee68ad57e2b7f89205f20
-file_secret:  df0b7c82d3697240c0d47362de4c0dd87655d2dca63226eede808da31156d656
+file_details_hash:         c9db5d8fe8fd891ca6e6b53ede0383ed6beb8b00430eb135bfeac6d331c0d29a
+file_secret:  62838a696aa2184f9663613c9fda1fdd829fa8ad8752bf90f057f046d3cc46bc
 file_content_hash: 17aa66d07b0254b8a86e61dd14b8fc0f2b6dd4fb93e545f343ba0604d4a9a5be
 file_path:         file1.txt
 ```
 
 **file\_details\_hash\_list** (each line terminated with `\r\n`):
 ```
-d0c36edf99a7ea0e9e0459401cbb2191da2130a7cb420c8449a51f8e4b7562d7
-a8f88cd6569e5ffcddbfc4905e02586fb82d88f284fec54cd869e0bd8fc2550e
-d1cffc21953a7854a9e99ea4e3969ba0c91a57986d40bf4580b7ff30aaaef7e0
-71af4a250b03ed4becbc347da32a9accbb20c10327bcc183c2aa5c559bd16f60
-6eacbb704099891e675ba07a9209e15844ce95b96d6731c2a7fa713275569291
-68c89abc9a75e5a13aaa726201b7bef305aa7e91a44ee68ad57e2b7f89205f20
+5105d416f19ada8bfae9fa5f4ad6b8c28141fd3317fa48ff41b4774486f50c0c
+23f05dc8fc59f8d6114f478cb69657f25bc717590397a18a11afa273ef2131d6
+c6f158c7f7cb22ae57b0343ac8b1a6fafc43e1d6a96b5b90a268436e7b86b672
+a169a66a1050a5bcdd700ce6f288151e26336da6f763e6d5559166676bf77317
+32c6ce33af843d522422174461a29cce4196648e67a557edf1b4df94f72558ac
+c9db5d8fe8fd891ca6e6b53ede0383ed6beb8b00430eb135bfeac6d331c0d29a
 ```
 
 **hashset\_hash:**
 ```
-0c8dd3e854c87df9e2af078792973bdcd2d97b365d61cd1f33c0961efd7a8839
+ea361143c639c8f51b8a89ce1891c25d8809edd0e406aa1adf319bd169e43e84
 ```
 
 </details>
@@ -284,7 +286,7 @@ The v1 PoC (GetFileHashesForPublish.ps1) produces a details file with additional
 
 ```
 SHA256:
-HashOfContentHashPath: PerFileUniqueValue ModifiedUtc HashOfContent  Path
+HashOfContentHashPath: PerFileUniqueValue ModifiedUtc HashOfContent Path
 <detail lines...>
 --- Summary ---
 <summary lines...>

@@ -50,4 +50,15 @@ describe('legacy v1 verification', () => {
     const valid = await verifyHashsetHash(fileDetailsHashList, expectedHashsetHash);
     expect(valid).toBe(true);
   });
+
+  it('v1 double-space before filename verifies correctly', async () => {
+    // v1 used two spaces between content_hash and file_path; current spec uses one.
+    // Verification must handle both since it hashes everything after "<hash>: ".
+    for (const line of detailLines) {
+      const fileDetails = line.slice(line.indexOf(': ') + 2);
+      expect(fileDetails).toMatch(/[0-9a-fA-F]{64}  /); // double space present
+      const result = await verifyFileDetailsLine(line);
+      expect(result.valid).toBe(true);
+    }
+  });
 });

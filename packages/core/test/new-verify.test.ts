@@ -19,7 +19,7 @@ describe('new format fixture verification', () => {
   const detailsContent = loadFixture('new-details.txt');
   const fileDetailsHashList = loadFixture('new-all-desc-hashes.txt');
   const detailLines = detailsContent.split(/\r?\n/).filter(Boolean);
-  const expectedHashsetHash = '0c8dd3e854c87df9e2af078792973bdcd2d97b365d61cd1f33c0961efd7a8839';
+  const expectedHashsetHash = 'ea361143c639c8f51b8a89ce1891c25d8809edd0e406aa1adf319bd169e43e84';
 
   it('has 6 detail lines (no headers/footers)', () => {
     expect(detailLines).toHaveLength(6);

@@ -27,6 +27,7 @@ program
   .option('-a, --file-details-hash-list <file>', 'File details hash list file path')
   .option('-i, --item <line>', 'Single detail line to verify')
   .option('-h, --hash <hash>', 'Expected hashset_hash to verify against')
+  .option('-x, --extract-hashes <file>', 'Write derived hash list to file (with -d)')
   .action(verifyCommand);
 
 program.parse();

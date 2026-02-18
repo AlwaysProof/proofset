@@ -46,21 +46,21 @@ async function* iterFiles(files: SourceFileEntry[]): AsyncIterable<SourceFileEnt
 
 // Expected values from actual CLI output (all lowercase)
 const expectedFileDetailsHashes = [
-  'd0c36edf99a7ea0e9e0459401cbb2191da2130a7cb420c8449a51f8e4b7562d7',
-  'a8f88cd6569e5ffcddbfc4905e02586fb82d88f284fec54cd869e0bd8fc2550e',
-  'd1cffc21953a7854a9e99ea4e3969ba0c91a57986d40bf4580b7ff30aaaef7e0',
-  '71af4a250b03ed4becbc347da32a9accbb20c10327bcc183c2aa5c559bd16f60',
-  '6eacbb704099891e675ba07a9209e15844ce95b96d6731c2a7fa713275569291',
-  '68c89abc9a75e5a13aaa726201b7bef305aa7e91a44ee68ad57e2b7f89205f20',
+  '5105d416f19ada8bfae9fa5f4ad6b8c28141fd3317fa48ff41b4774486f50c0c',
+  '23f05dc8fc59f8d6114f478cb69657f25bc717590397a18a11afa273ef2131d6',
+  'c6f158c7f7cb22ae57b0343ac8b1a6fafc43e1d6a96b5b90a268436e7b86b672',
+  'a169a66a1050a5bcdd700ce6f288151e26336da6f763e6d5559166676bf77317',
+  '32c6ce33af843d522422174461a29cce4196648e67a557edf1b4df94f72558ac',
+  'c9db5d8fe8fd891ca6e6b53ede0383ed6beb8b00430eb135bfeac6d331c0d29a',
 ];
 
 const expectedFileSecrets = [
   'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
-  '2695e12caf1d559b5cbe944c034837bb06751f40472e5d458fc05b69e69f72fb',
-  '4f02bb91c30e1c78e4c3f2291dff5fe96f4c3d1a3dbd89f5e22f94bd19a89264',
-  '7685db39608c4ede8e044af61842dde58d12dd49f0b10be614242a619548ea86',
-  '7e7f3ad7392cd307dd3183ac8ef2ef7cf712f08e0a08608084b9527df99bf78a',
-  'df0b7c82d3697240c0d47362de4c0dd87655d2dca63226eede808da31156d656',
+  '07eed9d508eb54bb0dda5a614ede22f0f1d77fb26c1a21add817507cdf2d0340',
+  '89775203b482402f793c89a065241b108e6e3250ff1cce93bc06c9764deb92dd',
+  '4f17b1ec352a872cacae08646997e12d9194c13fd537f7d33ff3b7124cf24d2e',
+  '13de26aca1dd9390225a47a2618d25fe84d08008a5c056942c1595428b185257',
+  '62838a696aa2184f9663613c9fda1fdd829fa8ad8752bf90f057f046d3cc46bc',
 ];
 
 const expectedContentHashes = [
@@ -81,7 +81,7 @@ const expectedPaths = [
   'file1.txt',
 ];
 
-const expectedHashsetHash = '0c8dd3e854c87df9e2af078792973bdcd2d97b365d61cd1f33c0961efd7a8839';
+const expectedHashsetHash = 'ea361143c639c8f51b8a89ce1891c25d8809edd0e406aa1adf319bd169e43e84';
 
 describe('createProofset', () => {
   it('produces correct file_details_hashes for all 6 entries', async () => {
@@ -157,7 +157,7 @@ describe('createProofset', () => {
     const lines = result.fileDetailsLineList.trimEnd().split('\r\n');
     expect(lines).toHaveLength(6);
     for (const line of lines) {
-      expect(line).toMatch(/^[0-9a-f]{64}: [0-9a-f]{64} \d{8}-\d{6} [0-9a-f]{64}  .+$/);
+      expect(line).toMatch(/^[0-9a-f]{64}: [0-9a-f]{64} \d{8}-\d{6} [0-9a-f]{64} .+$/);
     }
   });
 
