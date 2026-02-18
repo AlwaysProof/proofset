@@ -1,5 +1,8 @@
-import { createProofset } from '@proofset/core';
-import type { SourceFileEntry, HashAlgorithm } from '@proofset/core';
+// Copyright (c) 2016–2026 Ashley R. Thomas. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root.
+
+import { createProofset } from '../index.js';
+import type { SourceFileEntry, HashAlgorithm } from '../index.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as readline from 'node:readline';

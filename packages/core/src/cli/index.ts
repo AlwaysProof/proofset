@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+// Copyright (c) 2016–2026 Ashley R. Thomas. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root.
+
 import { Command } from 'commander';
 import { createCommand } from './create.js';
 import { verifyCommand } from './verify.js';

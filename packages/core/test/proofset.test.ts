@@ -1,3 +1,6 @@
+// Copyright (c) 2016–2026 Ashley R. Thomas. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root.
+
 import { describe, it, expect } from 'vitest';
 import { createProofset, verifyFileDetailsLine, verifyHashsetHash, verifyFileDetailsHashInList } from '../src/index.js';
 import type { SourceFileEntry } from '../src/index.js';

@@ -1,3 +1,6 @@
+// Copyright (c) 2016–2026 Ashley R. Thomas. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root.
+
 import {
   verifyFileDetailsLine,
   verifyHashsetHash,
@@ -6,7 +9,7 @@ import {
   buildHashListFromDetailLines,
   inferAlgorithm,
   hashBytes,
-} from '@proofset/core';
+} from '../index.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 

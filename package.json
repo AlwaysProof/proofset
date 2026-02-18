@@ -1,10 +1,10 @@
 {
   "name": "proofset-monorepo",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "workspaces": [
-    "packages/core",
-    "packages/cli"
+    "packages/core"
   ],
   "devDependencies": {
     "vitest": "^3.0.0",

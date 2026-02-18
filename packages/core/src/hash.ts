@@ -1,3 +1,6 @@
+// Copyright (c) 2016–2026 Ashley R. Thomas. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root.
+
 import type { HashAlgorithm } from './types.js';
 
 function toHex(bytes: Uint8Array): string {
