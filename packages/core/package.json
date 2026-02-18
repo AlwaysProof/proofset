@@ -1,6 +1,6 @@
 {
   "name": "@alwaysproof/proofset",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "Create and verify cryptographic proof sets for file integrity — library and CLI",
   "keywords": [
@@ -19,6 +19,11 @@
     "file-integrity",
     "data-integrity"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alwaysproof/proofset.git",
+    "directory": "packages/core"
+  },
   "type": "module",
   "bin": {
     "proofset": "./dist/cli/index.js"
