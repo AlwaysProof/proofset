@@ -34,6 +34,7 @@ program
   .option('-f, --file <path>', 'File or directory to verify against content hashes')
   .option('-m, --match <mode>', 'Match mode for directory -f: "path" (default) or "hash"')
   .option('--only-matches', 'With directory -f, show only matching entries')
+  .option('--no-header', 'Suppress column headers (for scripting/piping)')
   .action(verifyCommand);
 
 program.parse();

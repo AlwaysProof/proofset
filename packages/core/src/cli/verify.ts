@@ -47,10 +47,12 @@ interface VerifyOptions {
   file?: string;
   match?: string;
   onlyMatches?: boolean;
+  header?: boolean;
 }
 
 export async function verifyCommand(options: VerifyOptions): Promise<void> {
   const { details, fileDetailsHashList: hashListFile, item, hash, extractHashes, file: filePath, match, onlyMatches } = options;
+  const noHeader = options.header === false;
 
   // --- Option conflict detection ---
   if (details && item) {
@@ -119,7 +121,7 @@ export async function verifyCommand(options: VerifyOptions): Promise<void> {
     }
 
     if (filePath) {
-      await runFileContentVerification(lines, filePath, matchMode, onlyMatches ?? false);
+      await runFileContentVerification(lines, filePath, matchMode, onlyMatches ?? false, noHeader ?? false);
     }
     return;
   }
@@ -161,7 +163,7 @@ export async function verifyCommand(options: VerifyOptions): Promise<void> {
     }
 
     if (filePath) {
-      await runFileContentVerification(lines, filePath, matchMode, onlyMatches ?? false);
+      await runFileContentVerification(lines, filePath, matchMode, onlyMatches ?? false, noHeader ?? false);
     }
     return;
   }
@@ -186,7 +188,7 @@ export async function verifyCommand(options: VerifyOptions): Promise<void> {
     }
 
     if (filePath) {
-      await runFileContentVerification([item], filePath, matchMode, onlyMatches ?? false);
+      await runFileContentVerification([item], filePath, matchMode, onlyMatches ?? false, noHeader ?? false);
     }
     return;
   }
@@ -251,20 +253,23 @@ async function runFileContentVerification(
   filePath: string,
   matchMode: string,
   onlyMatches: boolean,
+  noHeader: boolean,
 ): Promise<void> {
   const resolved = path.resolve(filePath);
   const stat = fs.statSync(resolved);
 
   console.log('');
-  console.log('--- File content verification ---');
+  if (!noHeader) {
+    console.log('--- File content verification ---');
+  }
 
   if (stat.isFile()) {
-    await verifySingleFile(detailLines, resolved);
+    await verifySingleFile(detailLines, resolved, noHeader);
   } else if (stat.isDirectory()) {
     if (matchMode === 'hash') {
-      await verifyDirectoryByHash(detailLines, resolved, onlyMatches);
+      await verifyDirectoryByHash(detailLines, resolved, onlyMatches, noHeader);
     } else {
-      await verifyDirectoryByPath(detailLines, resolved, onlyMatches);
+      await verifyDirectoryByPath(detailLines, resolved, onlyMatches, noHeader);
     }
   } else {
     console.error(`Error: ${filePath} is not a file or directory.`);
@@ -273,20 +278,21 @@ async function runFileContentVerification(
 }
 
 /** Read a single file, verify its content against all detail lines. */
-async function verifySingleFile(detailLines: string[], absPath: string): Promise<void> {
+async function verifySingleFile(detailLines: string[], absPath: string, noHeader: boolean): Promise<void> {
   const fileBytes = new Uint8Array(fs.readFileSync(absPath));
+  const results: ContentMatchResult[] = [];
 
   for (const line of detailLines) {
     const parsed = parseFileDetailsLine(line);
     const result = await verifyFileContentHash(fileBytes, parsed.fileContentHash);
-    if (result.match) {
-      console.log(`PASS  ${parsed.fileDetailsHash.slice(0, 12)}...  ${parsed.filePath}  (content verified: ${path.basename(absPath)})`);
-    } else {
-      console.error(`FAIL  ${parsed.fileDetailsHash.slice(0, 12)}...  ${parsed.filePath}  (content mismatch)`);
-      console.error(`  expected: ${parsed.fileContentHash}`);
-      console.error(`  computed: ${result.computedHash}`);
-    }
+    results.push({
+      parsed,
+      status: result.match ? 'match' : 'mismatch',
+      computedHash: result.computedHash,
+    });
   }
+
+  printPathMatchResults(results, false, noHeader);
 }
 
 /** Read all files in a directory, build path->hash map, call core matchDetailEntriesByPath. */
@@ -294,6 +300,7 @@ async function verifyDirectoryByPath(
   detailLines: string[],
   dirPath: string,
   onlyMatches: boolean,
+  noHeader: boolean,
 ): Promise<void> {
   const allFiles = collectFiles(dirPath);
   const firstEntry = parseFileDetailsLine(detailLines[0]);
@@ -309,7 +316,7 @@ async function verifyDirectoryByPath(
   }
 
   const results = matchDetailEntriesByPath(detailLines, fileContentHashes);
-  printPathMatchResults(results, onlyMatches);
+  printPathMatchResults(results, onlyMatches, noHeader);
 }
 
 /** Read all files in a directory, build hash->paths map, call core matchDetailEntriesByHash. */
@@ -317,6 +324,7 @@ async function verifyDirectoryByHash(
   detailLines: string[],
   dirPath: string,
   onlyMatches: boolean,
+  noHeader: boolean,
 ): Promise<void> {
   const allFiles = collectFiles(dirPath);
   const firstEntry = parseFileDetailsLine(detailLines[0]);
@@ -338,44 +346,54 @@ async function verifyDirectoryByHash(
   console.log('');
 
   const results = matchDetailEntriesByHash(detailLines, hashToFiles);
-  printHashMatchResults(results, onlyMatches);
+  printHashMatchResults(results, onlyMatches, noHeader);
 }
 
 // ---------------------------------------------------------------------------
 // Output formatting
 // ---------------------------------------------------------------------------
 
-function printPathMatchResults(results: ContentMatchResult[], onlyMatches: boolean): void {
+const HASH_TRUNC = 16;
+
+function printPathMatchResults(results: ContentMatchResult[], onlyMatches: boolean, noHeader: boolean): void {
+  if (!noHeader && results.length > 0) {
+    console.log('STATUS  DETAILS_HASH         CONTENT_HASH         FILE_PATH');
+  }
   for (const r of results) {
-    const hashPrefix = r.parsed.fileDetailsHash.slice(0, 12);
+    const detailsHash = r.parsed.fileDetailsHash.slice(0, HASH_TRUNC) + '...';
+    const contentHash = r.parsed.fileContentHash.slice(0, HASH_TRUNC) + '...';
     switch (r.status) {
       case 'match':
-        console.log(`PASS  ${hashPrefix}...  ${r.parsed.filePath}  (content verified)`);
+        console.log(`PASS    ${detailsHash}  ${contentHash}  ${r.parsed.filePath}`);
         break;
       case 'mismatch':
-        console.error(`FAIL  ${hashPrefix}...  ${r.parsed.filePath}  (content mismatch)`);
-        console.error(`  expected: ${r.parsed.fileContentHash}`);
-        console.error(`  computed: ${r.computedHash}`);
+        console.error(`FAIL    ${detailsHash}  ${contentHash}  ${r.parsed.filePath}`);
+        console.error(`  expected content hash: ${r.parsed.fileContentHash}`);
+        console.error(`  computed content hash: ${r.computedHash}`);
         break;
       case 'not_found':
         if (!onlyMatches) {
-          console.log(`----  ${hashPrefix}...  ${r.parsed.filePath}  (file not found)`);
+          console.log(`----    ${detailsHash}  ${contentHash}  ${r.parsed.filePath}`);
         }
         break;
     }
   }
 }
 
-function printHashMatchResults(results: ContentMatchResult[], onlyMatches: boolean): void {
+function printHashMatchResults(results: ContentMatchResult[], onlyMatches: boolean, noHeader: boolean): void {
+  if (!noHeader && results.length > 0) {
+    console.log('DETAILS_HASH         CONTENT_HASH         FILE_PATH');
+  }
   for (const r of results) {
-    const hashPrefix = r.parsed.fileDetailsHash.slice(0, 12);
+    const detailsHash = r.parsed.fileDetailsHash.slice(0, HASH_TRUNC) + '...';
+    const contentHash = r.parsed.fileContentHash.slice(0, HASH_TRUNC) + '...';
     if (r.status === 'match' && r.matchedFiles) {
-      console.log(`${hashPrefix}...  ${r.parsed.filePath}`);
+      console.log(`${detailsHash}  ${contentHash}  ${r.parsed.filePath}`);
       for (const f of r.matchedFiles) {
-        console.log(`  -> ${f} (content hash match)`);
+        console.log(`  -> ${f}`);
       }
     } else if (!onlyMatches) {
-      console.log(`${hashPrefix}...  ${r.parsed.filePath}`);
+      console.log(`${detailsHash}  ${contentHash}  ${r.parsed.filePath}`);
       console.log(`  (no matching files)`);
     }
   }
