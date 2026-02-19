@@ -31,6 +31,9 @@ program
   .option('-i, --item <line>', 'Single detail line to verify')
   .option('-h, --hash <hash>', 'Expected hashset_hash to verify against')
   .option('-x, --extract-hashes <file>', 'Write derived hash list to file (with -d)')
+  .option('-f, --file <path>', 'File or directory to verify against content hashes')
+  .option('-m, --match <mode>', 'Match mode for directory -f: "path" (default) or "hash"')
+  .option('--only-matches', 'With directory -f, show only matching entries')
   .action(verifyCommand);
 
 program.parse();

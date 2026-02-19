@@ -14,6 +14,11 @@ export {
   verifyFileDetailsHashInList,
   extractDetailLines,
   buildHashListFromDetailLines,
+  parseFileDetailsLine,
+  isValidHashListFormat,
+  verifyFileContentHash,
+  matchDetailEntriesByPath,
+  matchDetailEntriesByHash,
 } from './verify.js';
 export { hashString, hashBytes } from './hash.js';
 export type {
@@ -21,5 +26,8 @@ export type {
   SourceFileEntry,
   ProofsetConfig,
   ProofsetFileDetails,
+  ParsedFileDetailsLine,
+  ContentMatchStatus,
+  ContentMatchResult,
   ProofsetResult,
 } from './types.js';

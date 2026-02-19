@@ -28,6 +28,31 @@ export interface ProofsetFileDetails {
   filePath: string;
 }
 
+/**
+ * A parsed file_details_line: `<file_details_hash>: <file_secret> <modified_time_utc> <file_content_hash> <file_path>`
+ */
+export interface ParsedFileDetailsLine {
+  fileDetailsHash: string;
+  fileSecret: string;
+  modifiedTimeUtc: string;
+  fileContentHash: string;
+  filePath: string;
+}
+
+export type ContentMatchStatus = 'match' | 'mismatch' | 'not_found';
+
+/** Result of matching a single detail entry against available file content. */
+export interface ContentMatchResult {
+  /** The parsed detail line being checked. */
+  parsed: ParsedFileDetailsLine;
+  /** Whether the file content hash matched, mismatched, or no file was found. */
+  status: ContentMatchStatus;
+  /** The computed content hash of the matched file (present when status is 'match' or 'mismatch'). */
+  computedHash?: string;
+  /** Files whose content hash matches this entry (hash match mode only). */
+  matchedFiles?: string[];
+}
+
 export interface ProofsetResult {
   hashsetHash: string;
   fileDetailsHashList: string;
