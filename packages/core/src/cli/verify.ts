@@ -51,6 +51,16 @@ interface VerifyOptions {
 }
 
 export async function verifyCommand(options: VerifyOptions): Promise<void> {
+  try {
+    await verifyCommandInner(options);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`Error: ${message}`);
+    process.exit(1);
+  }
+}
+
+async function verifyCommandInner(options: VerifyOptions): Promise<void> {
   const { details, fileDetailsHashList: hashListFile, item, hash, extractHashes, file: filePath, match, onlyMatches } = options;
   const noHeader = options.header === false;
 
