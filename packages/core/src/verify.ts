@@ -80,12 +80,19 @@ export function parseFileDetailsLine(detailLine: string): ParsedFileDetailsLine 
   if (parts.length < 4) {
     throw new Error('Invalid detail line format: expected at least 4 fields in file_details');
   }
+  // v1 used double space before file_path, which produces an empty part.
+  // Join remaining parts and trim to handle both single and double space formats.
+  const filePath = parts.slice(3).join(' ').trim();
+  if (filePath.length === 0) {
+    throw new Error('Invalid detail line format: empty file_path');
+  }
+
   return {
     fileDetailsHash,
     fileSecret: parts[0],
     modifiedTimeUtc: parts[1],
     fileContentHash: parts[2],
-    filePath: parts.slice(3).join(' '),
+    filePath,
   };
 }
 
@@ -133,7 +140,53 @@ function normalizePath(p: string): string {
 }
 
 /**
+ * Look up a path in the file content hashes map, trying progressively shorter
+ * suffixes if the direct lookup fails. This handles v1 absolute paths
+ * (e.g. `C:\example1\source-files\dir1\file2.txt`) by stripping leading
+ * segments until a match is found against relative paths in the map.
+ *
+ * Returns the computed hash if found, or undefined if no suffix matches.
+ */
+function lookupBySuffix(
+  entryPath: string,
+  fileContentHashes: Map<string, string>,
+): string | undefined {
+  // Try direct match first
+  const direct = fileContentHashes.get(entryPath);
+  if (direct !== undefined) return direct;
+
+  // Strip leading segments one at a time (suffix fallback for absolute paths)
+  let remaining = entryPath;
+  while (true) {
+    const slashIdx = remaining.indexOf('/');
+    if (slashIdx === -1) break;
+    remaining = remaining.slice(slashIdx + 1);
+    if (remaining.length === 0) break;
+    const found = fileContentHashes.get(remaining);
+    if (found !== undefined) return found;
+  }
+
+  // Filename-only fallback: if the entry path has no directory component,
+  // find a file in the map whose filename matches (e.g. "file2.txt" matches
+  // "dir1/file2.txt"). Uses the first match found.
+  if (!entryPath.includes('/')) {
+    for (const [mapPath, hash] of fileContentHashes) {
+      const lastSlash = mapPath.lastIndexOf('/');
+      const filename = lastSlash === -1 ? mapPath : mapPath.slice(lastSlash + 1);
+      if (filename === entryPath) return hash;
+    }
+  }
+
+  return undefined;
+}
+
+/**
  * Match detail entries against available files by relative path.
+ *
+ * For each detail entry, tries the entry's file_path as a direct relative lookup
+ * against the provided map. If not found, progressively strips leading path segments
+ * to handle v1 absolute paths (e.g. `C:\example1\source-files\file1.txt` will match
+ * `file1.txt` in the map after stripping the prefix).
  *
  * @param detailLines - Array of raw file_details_line strings
  * @param fileContentHashes - Map of normalized relative path to computed content hash (lowercase hex).
@@ -147,7 +200,7 @@ export function matchDetailEntriesByPath(
   return detailLines.map((line) => {
     const parsed = parseFileDetailsLine(line);
     const normalizedEntryPath = normalizePath(parsed.filePath);
-    const computedHash = fileContentHashes.get(normalizedEntryPath);
+    const computedHash = lookupBySuffix(normalizedEntryPath, fileContentHashes);
 
     if (computedHash === undefined) {
       return { parsed, status: 'not_found' as const };
