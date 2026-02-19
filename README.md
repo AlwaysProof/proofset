@@ -74,6 +74,43 @@ proofset verify -i "23f05dc8...: 07eed9d5... 20260217-003735 ebe2f179... file2.t
 proofset verify -d proofset-details.txt -x derived-hash-list.txt
 ```
 
+### Verify file contents
+
+Verify that actual files on disk match the content hashes in detail lines using `-f`:
+
+```bash
+# Verify a single detail line against an actual file
+proofset verify -i "<detail-line>" -f ./file1.txt
+
+# Verify a details file against a directory of source files (path matching)
+proofset verify -d proofset-details.txt -f ./my-files
+
+# Match by content hash instead of path (finds renamed/moved files)
+proofset verify -d proofset-details.txt -f ./my-files -m hash
+
+# Show only entries that have a matching file
+proofset verify -d proofset-details.txt -f ./my-files --only-matches
+
+# Suppress column headers (for scripting/piping)
+proofset verify -d proofset-details.txt -f ./my-files --no-header
+```
+
+Path matching (`-m path`, the default) automatically handles both relative and absolute paths in detail lines -- if the path in a detail entry doesn't match directly, progressively shorter suffixes are tried. This means proofsets created with older tools that used absolute paths still work.
+
+**Verify options:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-d, --details <file>` | Details file path | |
+| `-a, --file-details-hash-list <file>` | File details hash list file path | |
+| `-i, --item <line>` | Single detail line to verify | |
+| `-h, --hash <hash>` | Expected hashset\_hash to verify against | |
+| `-x, --extract-hashes <file>` | Write derived hash list to file (with `-d`) | |
+| `-f, --file <path>` | File or directory to verify against content hashes | |
+| `-m, --match <mode>` | Match mode for directory `-f`: `path` or `hash` | `path` |
+| `--only-matches` | With directory `-f`, show only matching entries | |
+| `--no-header` | Suppress column headers (for scripting/piping) | |
+
 ## Library API
 
 ### Create
@@ -107,6 +144,10 @@ import {
   verifyFileDetailsLine,
   verifyFileDetailsHashInList,
   verifyHashsetHash,
+  parseFileDetailsLine,
+  verifyFileContentHash,
+  matchDetailEntriesByPath,
+  matchDetailEntriesByHash,
 } from '@alwaysproof/proofset';
 
 // Verify a disclosed detail line
@@ -117,17 +158,34 @@ const inList = verifyFileDetailsHashInList(fileDetailsHash, hashListContent);
 
 // Verify hashset hash
 const hashValid = await verifyHashsetHash(hashListContent, publishedHash);
+
+// Parse a detail line into its fields
+const parsed = parseFileDetailsLine(detailLine);
+// => { fileDetailsHash, fileSecret, modifiedTimeUtc, fileContentHash, filePath }
+
+// Verify file content against a detail line's content hash
+const { match, computedHash } = await verifyFileContentHash(fileBytes, parsed.fileContentHash);
+
+// Match detail entries against files by path (Map of relativePath -> contentHash)
+const pathResults = matchDetailEntriesByPath(detailLines, fileContentHashes);
+
+// Match detail entries against files by content hash (Map of hash -> relativePaths[])
+const hashResults = matchDetailEntriesByHash(detailLines, hashToFiles);
+// Each result: { parsed, status: 'match' | 'mismatch' | 'not_found', computedHash?, matchedFiles? }
 ```
 
 ### Types
 
 ```typescript
 import type {
-  HashAlgorithm,       // 'SHA-256' | 'SHA-512'
-  SourceFileEntry,     // { relativePath, fullPath?, modifiedTime, content }
-  ProofsetConfig,      // { seedPassword, algorithm }
-  ProofsetResult,      // { hashsetHash, fileDetailsHashList, fileDetails, fileDetailsLineList }
-  ProofsetFileDetails, // { fileDetailsHash, fileSecret, modifiedTimeUtc, contentHash, filePath }
+  HashAlgorithm,          // 'SHA-256' | 'SHA-512'
+  SourceFileEntry,        // { relativePath, fullPath?, modifiedTime, content }
+  ProofsetConfig,         // { seedPassword, algorithm }
+  ProofsetResult,         // { hashsetHash, fileDetailsHashList, fileDetails, fileDetailsLineList }
+  ProofsetFileDetails,    // { fileDetailsHash, fileSecret, modifiedTimeUtc, contentHash, filePath }
+  ParsedFileDetailsLine,  // { fileDetailsHash, fileSecret, modifiedTimeUtc, fileContentHash, filePath }
+  ContentMatchResult,     // { parsed, status, computedHash?, matchedFiles? }
+  ContentMatchStatus,     // 'match' | 'mismatch' | 'not_found'
 } from '@alwaysproof/proofset';
 ```
 
@@ -140,6 +198,7 @@ import {
   inferAlgorithm,                // infer SHA-256 or SHA-512 from hex length
   extractDetailLines,            // parse detail lines from a details file (handles v1 format)
   buildHashListFromDetailLines,  // build hash list string from detail lines
+  isValidHashListFormat,         // validate a string is one hash per line
 } from '@alwaysproof/proofset';
 ```
 
