@@ -39,7 +39,8 @@
   "types": "./dist/index.d.ts",
   "files": ["dist"],
   "scripts": {
-    "build": "tsup src/index.ts src/cli/index.ts --format esm,cjs --dts",
+    "clean": "rm -rf dist",
+    "build": "rm -rf dist && tsup src/index.ts src/cli/index.ts --format esm,cjs --dts",
     "prepack": "cp ../../README.md ../../LICENSE .",
     "test": "vitest run"
   },
