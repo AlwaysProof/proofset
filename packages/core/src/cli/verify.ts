@@ -60,9 +60,53 @@ export async function verifyCommand(options: VerifyOptions): Promise<void> {
   }
 }
 
+/** A label/value pair for the summary block. */
+interface SummaryEntry {
+  label: string;
+  value: string;
+}
+
+/** Build summary entries from content match results. */
+function buildContentSummary(results: ContentMatchResult[]): SummaryEntry[] {
+  let matches = 0;
+  let mismatches = 0;
+  let notFound = 0;
+  for (const r of results) {
+    if (r.status === 'match') matches++;
+    else if (r.status === 'mismatch') mismatches++;
+    else notFound++;
+  }
+  const entries: SummaryEntry[] = [];
+  entries.push({ label: 'File content matches', value: String(matches) });
+  if (mismatches > 0) entries.push({ label: 'File content mismatches', value: String(mismatches) });
+  if (notFound > 0) entries.push({ label: 'File content not found', value: String(notFound) });
+  return entries;
+}
+
+const MIN_DOTS = 3;
+
+/** Print summary block with dot-leader alignment. */
+function printSummary(entries: SummaryEntry[]): void {
+  if (entries.length === 0) return;
+
+  // Determine total line width: longest label + space + MIN_DOTS + space + longest value
+  const maxLabel = Math.max(...entries.map(e => e.label.length));
+  const maxValue = Math.max(...entries.map(e => e.value.length));
+  const totalWidth = maxLabel + 1 + MIN_DOTS + 1 + maxValue;
+
+  console.log('');
+  console.log('--- Summary ---');
+  for (const { label, value } of entries) {
+    const dotsNeeded = totalWidth - label.length - 1 - 1 - value.length;
+    const dots = '.'.repeat(Math.max(MIN_DOTS, dotsNeeded));
+    console.log(`${label} ${dots} ${value}`);
+  }
+}
+
 async function verifyCommandInner(options: VerifyOptions): Promise<void> {
   const { details, fileDetailsHashList: hashListFile, item, hash, extractHashes, file: filePath, match, onlyMatches } = options;
   const noHeader = options.header === false;
+  const summary: SummaryEntry[] = [];
 
   // --- Option conflict detection ---
   if (details && item) {
@@ -123,16 +167,19 @@ async function verifyCommandInner(options: VerifyOptions): Promise<void> {
     const computed = await hashBytes(new TextEncoder().encode(fileDetailsHashList), algorithm);
     console.log(`hashset_hash: ${computed}`);
 
-    if (allValid) {
-      console.log(`Verified: all ${lines.length} detail items valid.`);
-    } else {
+    if (!allValid) {
       console.error('Verification FAILED.');
       process.exit(1);
     }
 
+    const validCount = lines.length;
+    summary.push({ label: 'Valid file detail entries', value: String(validCount) });
+
     if (filePath) {
-      await runFileContentVerification(lines, filePath, matchMode, onlyMatches ?? false, noHeader ?? false);
+      const results = await runFileContentVerification(lines, filePath, matchMode, onlyMatches ?? false, noHeader ?? false);
+      summary.push(...buildContentSummary(results));
     }
+    printSummary(summary);
     return;
   }
 
@@ -160,12 +207,13 @@ async function verifyCommandInner(options: VerifyOptions): Promise<void> {
     const computed = await hashBytes(new TextEncoder().encode(derivedHashList), algorithm);
     console.log(`hashset_hash: ${computed}`);
 
-    if (allValid) {
-      console.log(`Verified: all ${lines.length} detail items valid.`);
-    } else {
+    if (!allValid) {
       console.error('Verification FAILED.');
       process.exit(1);
     }
+
+    const validCount = lines.length;
+    summary.push({ label: 'Valid file detail entries', value: String(validCount) });
 
     if (extractHashes) {
       fs.writeFileSync(path.resolve(extractHashes), derivedHashList);
@@ -173,8 +221,10 @@ async function verifyCommandInner(options: VerifyOptions): Promise<void> {
     }
 
     if (filePath) {
-      await runFileContentVerification(lines, filePath, matchMode, onlyMatches ?? false, noHeader ?? false);
+      const results = await runFileContentVerification(lines, filePath, matchMode, onlyMatches ?? false, noHeader ?? false);
+      summary.push(...buildContentSummary(results));
     }
+    printSummary(summary);
     return;
   }
 
@@ -198,7 +248,9 @@ async function verifyCommandInner(options: VerifyOptions): Promise<void> {
     }
 
     if (filePath) {
-      await runFileContentVerification([item], filePath, matchMode, onlyMatches ?? false, noHeader ?? false);
+      const results = await runFileContentVerification([item], filePath, matchMode, onlyMatches ?? false, noHeader ?? false);
+      summary.push(...buildContentSummary(results));
+      printSummary(summary);
     }
     return;
   }
@@ -264,7 +316,7 @@ async function runFileContentVerification(
   matchMode: string,
   onlyMatches: boolean,
   noHeader: boolean,
-): Promise<void> {
+): Promise<ContentMatchResult[]> {
   const resolved = path.resolve(filePath);
   const stat = fs.statSync(resolved);
 
@@ -274,12 +326,12 @@ async function runFileContentVerification(
   }
 
   if (stat.isFile()) {
-    await verifySingleFile(detailLines, resolved, noHeader);
+    return await verifySingleFile(detailLines, resolved, noHeader);
   } else if (stat.isDirectory()) {
     if (matchMode === 'hash') {
-      await verifyDirectoryByHash(detailLines, resolved, onlyMatches, noHeader);
+      return await verifyDirectoryByHash(detailLines, resolved, onlyMatches, noHeader);
     } else {
-      await verifyDirectoryByPath(detailLines, resolved, onlyMatches, noHeader);
+      return await verifyDirectoryByPath(detailLines, resolved, onlyMatches, noHeader);
     }
   } else {
     console.error(`Error: ${filePath} is not a file or directory.`);
@@ -288,7 +340,7 @@ async function runFileContentVerification(
 }
 
 /** Read a single file, verify its content against all detail lines. */
-async function verifySingleFile(detailLines: string[], absPath: string, noHeader: boolean): Promise<void> {
+async function verifySingleFile(detailLines: string[], absPath: string, noHeader: boolean): Promise<ContentMatchResult[]> {
   const fileBytes = new Uint8Array(fs.readFileSync(absPath));
   const results: ContentMatchResult[] = [];
 
@@ -303,6 +355,7 @@ async function verifySingleFile(detailLines: string[], absPath: string, noHeader
   }
 
   printPathMatchResults(results, false, noHeader);
+  return results;
 }
 
 /** Read all files in a directory, build path->hash map, call core matchDetailEntriesByPath. */
@@ -311,7 +364,7 @@ async function verifyDirectoryByPath(
   dirPath: string,
   onlyMatches: boolean,
   noHeader: boolean,
-): Promise<void> {
+): Promise<ContentMatchResult[]> {
   const allFiles = collectFiles(dirPath);
   const firstEntry = parseFileDetailsLine(detailLines[0]);
   const algorithm = inferAlgorithm(firstEntry.fileContentHash);
@@ -327,6 +380,7 @@ async function verifyDirectoryByPath(
 
   const results = matchDetailEntriesByPath(detailLines, fileContentHashes);
   printPathMatchResults(results, onlyMatches, noHeader);
+  return results;
 }
 
 /** Read all files in a directory, build hash->paths map, call core matchDetailEntriesByHash. */
@@ -335,7 +389,7 @@ async function verifyDirectoryByHash(
   dirPath: string,
   onlyMatches: boolean,
   noHeader: boolean,
-): Promise<void> {
+): Promise<ContentMatchResult[]> {
   const allFiles = collectFiles(dirPath);
   const firstEntry = parseFileDetailsLine(detailLines[0]);
   const algorithm = inferAlgorithm(firstEntry.fileContentHash);
@@ -357,6 +411,7 @@ async function verifyDirectoryByHash(
 
   const results = matchDetailEntriesByHash(detailLines, hashToFiles);
   printHashMatchResults(results, onlyMatches, noHeader);
+  return results;
 }
 
 // ---------------------------------------------------------------------------
@@ -367,23 +422,23 @@ const HASH_TRUNC = 16;
 
 function printPathMatchResults(results: ContentMatchResult[], onlyMatches: boolean, noHeader: boolean): void {
   if (!noHeader && results.length > 0) {
-    console.log('STATUS  DETAILS_HASH         CONTENT_HASH         FILE_PATH');
+    console.log('STATUS     DETAILS_HASH         CONTENT_HASH         FILE_PATH');
   }
   for (const r of results) {
     const detailsHash = r.parsed.fileDetailsHash.slice(0, HASH_TRUNC) + '...';
     const contentHash = r.parsed.fileContentHash.slice(0, HASH_TRUNC) + '...';
     switch (r.status) {
       case 'match':
-        console.log(`PASS    ${detailsHash}  ${contentHash}  ${r.parsed.filePath}`);
+        console.log(`PASS       ${detailsHash}  ${contentHash}  ${r.parsed.filePath}`);
         break;
       case 'mismatch':
-        console.error(`FAIL    ${detailsHash}  ${contentHash}  ${r.parsed.filePath}`);
+        console.error(`FAIL       ${detailsHash}  ${contentHash}  ${r.parsed.filePath}`);
         console.error(`  expected content hash: ${r.parsed.fileContentHash}`);
         console.error(`  computed content hash: ${r.computedHash}`);
         break;
       case 'not_found':
         if (!onlyMatches) {
-          console.log(`----    ${detailsHash}  ${contentHash}  ${r.parsed.filePath}`);
+          console.log(`NOT FOUND  ${detailsHash}  ${contentHash}  ${r.parsed.filePath}`);
         }
         break;
     }
@@ -392,18 +447,18 @@ function printPathMatchResults(results: ContentMatchResult[], onlyMatches: boole
 
 function printHashMatchResults(results: ContentMatchResult[], onlyMatches: boolean, noHeader: boolean): void {
   if (!noHeader && results.length > 0) {
-    console.log('DETAILS_HASH         CONTENT_HASH         FILE_PATH');
+    console.log('STATUS     DETAILS_HASH         CONTENT_HASH         FILE_PATH');
   }
   for (const r of results) {
     const detailsHash = r.parsed.fileDetailsHash.slice(0, HASH_TRUNC) + '...';
     const contentHash = r.parsed.fileContentHash.slice(0, HASH_TRUNC) + '...';
     if (r.status === 'match' && r.matchedFiles) {
-      console.log(`${detailsHash}  ${contentHash}  ${r.parsed.filePath}`);
+      console.log(`PASS       ${detailsHash}  ${contentHash}  ${r.parsed.filePath}`);
       for (const f of r.matchedFiles) {
         console.log(`  -> ${f}`);
       }
     } else if (!onlyMatches) {
-      console.log(`${detailsHash}  ${contentHash}  ${r.parsed.filePath}`);
+      console.log(`NOT FOUND  ${detailsHash}  ${contentHash}  ${r.parsed.filePath}`);
       console.log(`  (no matching files)`);
     }
   }
