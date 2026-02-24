@@ -248,8 +248,8 @@ export function matchDetailEntriesByHash(
 // Simple proofset verification
 // ---------------------------------------------------------------------------
 
-// Simple proofset line: hex hash, space, YYYYMMDD-hhmmss, space, filename
-const SIMPLE_LINE_RE = /^[0-9a-fA-F]{64,128} \d{8}-\d{6} .+$/;
+// Simple proofset line: hex hash, space, filename
+const SIMPLE_LINE_RE = /^[0-9a-fA-F]{64,128} .+$/;
 
 /**
  * Detect whether content is a simple proofset (vs standard proofset format).
@@ -266,19 +266,16 @@ export function isSimpleProofsetFormat(content: string): boolean {
 
 /**
  * Parse a single simple proofset line into its component fields.
- * Format: `<content-hash> <modified-time> <filename>`
- * The filename is everything after the second space (may contain spaces).
+ * Format: `<content-hash> <filename>`
+ * The filename is everything after the first space (may contain spaces).
  */
 export function parseSimpleProofsetLine(line: string): SimpleProofsetEntry {
   const firstSpace = line.indexOf(' ');
   if (firstSpace === -1) throw new Error('Invalid simple proofset line: missing fields');
-  const secondSpace = line.indexOf(' ', firstSpace + 1);
-  if (secondSpace === -1) throw new Error('Invalid simple proofset line: missing filename');
 
   return {
     contentHash: line.slice(0, firstSpace),
-    modifiedTimeUtc: line.slice(firstSpace + 1, secondSpace),
-    fileName: line.slice(secondSpace + 1),
+    fileName: line.slice(firstSpace + 1),
   };
 }
 

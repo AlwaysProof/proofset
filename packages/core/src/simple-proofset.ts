@@ -12,7 +12,7 @@ import type {
   SimpleProofsetEntry,
   SimpleProofsetResult,
 } from './types.js';
-import { hashBytes, formatModifiedTime } from './hash.js';
+import { hashBytes } from './hash.js';
 
 export async function createSimpleProofset(
   files: AsyncIterable<SourceFileEntry>,
@@ -24,11 +24,10 @@ export async function createSimpleProofset(
 
   for await (const file of files) {
     const contentHash = await hashBytes(file.content, algorithm);
-    const modifiedTimeUtc = formatModifiedTime(file.modifiedTime);
     const fileName = file.relativePath;
 
-    entries.push({ contentHash, modifiedTimeUtc, fileName });
-    lines.push(`${contentHash} ${modifiedTimeUtc} ${fileName}`);
+    entries.push({ contentHash, fileName });
+    lines.push(`${contentHash} ${fileName}`);
   }
 
   const content = lines.join('\r\n') + '\r\n';

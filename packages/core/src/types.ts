@@ -66,7 +66,6 @@ export interface SimpleProofsetConfig {
 
 export interface SimpleProofsetEntry {
   contentHash: string;
-  modifiedTimeUtc: string;
   fileName: string;
 }
 

@@ -32,16 +32,14 @@ describe('createSimpleProofset', () => {
     expect(result.content).toContain('\r\n');
     expect(result.content.endsWith('\r\n')).toBe(true);
 
-    // Each line has 3 space-separated fields
+    // Each line has 2 space-separated fields: hash + filename
     const lines = result.content.split('\r\n').filter(Boolean);
     expect(lines).toHaveLength(2);
     for (const line of lines) {
       const parts = line.split(' ');
-      expect(parts.length).toBeGreaterThanOrEqual(3);
+      expect(parts.length).toBeGreaterThanOrEqual(2);
       // Content hash is 64 hex chars (SHA-256)
       expect(parts[0]).toMatch(/^[0-9a-f]{64}$/);
-      // Modified time is YYYYMMDD-hhmmss
-      expect(parts[1]).toMatch(/^\d{8}-\d{6}$/);
     }
   });
 
@@ -57,6 +55,24 @@ describe('createSimpleProofset', () => {
     async function* files2(): AsyncIterable<SourceFileEntry> {
       yield makeEntry('file.txt', 'test content', date);
     }
+    const result2 = await createSimpleProofset(files2(), { algorithm: 'SHA-256' });
+
+    expect(result1.hash).toBe(result2.hash);
+    expect(result1.content).toBe(result2.content);
+  });
+
+  it('root hash is deterministic across different timestamps', async () => {
+    const date1 = new Date('2026-01-15T10:30:00Z');
+    async function* files1(): AsyncIterable<SourceFileEntry> {
+      yield makeEntry('file.txt', 'test content', date1);
+    }
+
+    const date2 = new Date('2025-06-01T00:00:00Z');
+    async function* files2(): AsyncIterable<SourceFileEntry> {
+      yield makeEntry('file.txt', 'test content', date2);
+    }
+
+    const result1 = await createSimpleProofset(files1(), { algorithm: 'SHA-256' });
     const result2 = await createSimpleProofset(files2(), { algorithm: 'SHA-256' });
 
     expect(result1.hash).toBe(result2.hash);
@@ -88,7 +104,7 @@ describe('createSimpleProofset', () => {
 
 describe('isSimpleProofsetFormat', () => {
   it('identifies simple proofset format', () => {
-    const simple = 'a'.repeat(64) + ' 20260115-103000 hello.txt\r\n';
+    const simple = 'a'.repeat(64) + ' hello.txt\r\n';
     expect(isSimpleProofsetFormat(simple)).toBe(true);
   });
 
@@ -102,7 +118,7 @@ describe('isSimpleProofsetFormat', () => {
   });
 
   it('identifies SHA-512 simple proofset', () => {
-    const simple = 'a'.repeat(128) + ' 20260115-103000 hello.txt\r\n';
+    const simple = 'a'.repeat(128) + ' hello.txt\r\n';
     expect(isSimpleProofsetFormat(simple)).toBe(true);
   });
 });
@@ -110,19 +126,17 @@ describe('isSimpleProofsetFormat', () => {
 describe('parseSimpleProofsetLine', () => {
   it('parses a simple line correctly', () => {
     const hash = 'a'.repeat(64);
-    const line = `${hash} 20260115-103000 myfile.txt`;
+    const line = `${hash} myfile.txt`;
     const entry = parseSimpleProofsetLine(line);
     expect(entry.contentHash).toBe(hash);
-    expect(entry.modifiedTimeUtc).toBe('20260115-103000');
     expect(entry.fileName).toBe('myfile.txt');
   });
 
   it('handles filenames with spaces', () => {
     const hash = 'b'.repeat(64);
-    const line = `${hash} 20260115-103000 my file name.txt`;
+    const line = `${hash} my file name.txt`;
     const entry = parseSimpleProofsetLine(line);
     expect(entry.contentHash).toBe(hash);
-    expect(entry.modifiedTimeUtc).toBe('20260115-103000');
     expect(entry.fileName).toBe('my file name.txt');
   });
 
@@ -147,19 +161,19 @@ describe('extractSimpleProofsetLines', () => {
 
 describe('verifySimpleProofsetHash', () => {
   it('validates correct root hash', async () => {
-    const content = 'a'.repeat(64) + ' 20260115-103000 file.txt\r\n';
+    const content = 'a'.repeat(64) + ' file.txt\r\n';
     const hash = await hashBytes(new TextEncoder().encode(content), 'SHA-256');
     expect(await verifySimpleProofsetHash(content, hash)).toBe(true);
   });
 
   it('rejects wrong hash', async () => {
-    const content = 'a'.repeat(64) + ' 20260115-103000 file.txt\r\n';
+    const content = 'a'.repeat(64) + ' file.txt\r\n';
     const wrongHash = 'f'.repeat(64);
     expect(await verifySimpleProofsetHash(content, wrongHash)).toBe(false);
   });
 
   it('compares case-insensitively', async () => {
-    const content = 'a'.repeat(64) + ' 20260115-103000 file.txt\r\n';
+    const content = 'a'.repeat(64) + ' file.txt\r\n';
     const hash = await hashBytes(new TextEncoder().encode(content), 'SHA-256');
     expect(await verifySimpleProofsetHash(content, hash.toUpperCase())).toBe(true);
   });
@@ -187,7 +201,6 @@ describe('round-trip: create then verify', () => {
     for (let i = 0; i < lines.length; i++) {
       const parsed = parseSimpleProofsetLine(lines[i]);
       expect(parsed.contentHash).toBe(result.entries[i].contentHash);
-      expect(parsed.modifiedTimeUtc).toBe(result.entries[i].modifiedTimeUtc);
       expect(parsed.fileName).toBe(result.entries[i].fileName);
     }
   });

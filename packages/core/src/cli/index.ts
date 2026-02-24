@@ -12,7 +12,7 @@ const program = new Command();
 program
   .name('proofset')
   .description('Create and verify proofsets — hashset commitment with selective disclosure')
-  .version('0.1.5');
+  .version('0.1.6');
 
 program
   .command('create')
@@ -20,7 +20,7 @@ program
   .requiredOption('-s, --source <dir>', 'Source files directory')
   .option('-o, --output <dir>', 'Output directory for hashset files', '.')
   .option('-p, --password <seed>', 'Seed password (use "-" to prompt securely)')
-  .option('--simple', 'Create a simple proofset (content hash + modified time + filename)')
+  .option('--simple', 'Create a simple proofset (content hash + filename)')
   .option('--algo <algorithm>', 'Hash algorithm (sha256 or sha512)', 'sha256')
   .action(createCommand);
 

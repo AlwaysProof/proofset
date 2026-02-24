@@ -164,7 +164,7 @@ async function verifyCommandInner(options: VerifyOptions): Promise<void> {
       const entries = lines.map(parseSimpleProofsetLine);
 
       // Build a map of filename -> status when -f is provided
-      let fileStatuses: Map<string, { status: 'PASS' | 'FAIL'; computedHash?: string }> | null = null;
+      let fileStatuses: Map<string, { status: 'PASS' | 'FAIL'; computedHash?: string; matchedFiles?: string[] }> | null = null;
       let matches = 0;
       let mismatches = 0;
       let notFound = 0;
@@ -183,20 +183,42 @@ async function verifyCommandInner(options: VerifyOptions): Promise<void> {
           }
         } else if (stat.isDirectory()) {
           const allFiles = collectFiles(resolved);
-          const fileHashByName = new Map<string, string>();
-          for (const absPath of allFiles) {
-            const name = path.basename(absPath);
-            const fileBytes = new Uint8Array(fs.readFileSync(absPath));
-            const h = await hashBytes(fileBytes, algorithm);
-            fileHashByName.set(name, h);
-          }
-          for (const entry of entries) {
-            const computedHash = fileHashByName.get(entry.fileName);
-            if (computedHash !== undefined) {
-              const isMatch = computedHash.toLowerCase() === entry.contentHash.toLowerCase();
-              fileStatuses.set(entry.fileName, { status: isMatch ? 'PASS' : 'FAIL', computedHash });
+
+          if (matchMode === 'hash') {
+            // Build hash -> file paths map, then match entries by content hash
+            const hashToFiles = new Map<string, string[]>();
+            for (const absPath of allFiles) {
+              const relPath = path.relative(resolved, absPath);
+              const fileBytes = new Uint8Array(fs.readFileSync(absPath));
+              const h = await hashBytes(fileBytes, algorithm);
+              const existing = hashToFiles.get(h.toLowerCase()) ?? [];
+              existing.push(relPath);
+              hashToFiles.set(h.toLowerCase(), existing);
             }
-            // not found entries remain absent from the map
+            for (const entry of entries) {
+              const matched = hashToFiles.get(entry.contentHash.toLowerCase());
+              if (matched && matched.length > 0) {
+                fileStatuses.set(entry.fileName, { status: 'PASS', computedHash: entry.contentHash, matchedFiles: matched });
+              }
+              // not found entries remain absent from the map
+            }
+          } else {
+            // Match by filename (default)
+            const fileHashByName = new Map<string, string>();
+            for (const absPath of allFiles) {
+              const name = path.basename(absPath);
+              const fileBytes = new Uint8Array(fs.readFileSync(absPath));
+              const h = await hashBytes(fileBytes, algorithm);
+              fileHashByName.set(name, h);
+            }
+            for (const entry of entries) {
+              const computedHash = fileHashByName.get(entry.fileName);
+              if (computedHash !== undefined) {
+                const isMatch = computedHash.toLowerCase() === entry.contentHash.toLowerCase();
+                fileStatuses.set(entry.fileName, { status: isMatch ? 'PASS' : 'FAIL', computedHash });
+              }
+              // not found entries remain absent from the map
+            }
           }
         } else {
           console.error(`Error: ${filePath} is not a file or directory.`);
@@ -207,7 +229,7 @@ async function verifyCommandInner(options: VerifyOptions): Promise<void> {
       // Always print per-entry status
       console.log('');
       if (!noHeader) {
-        console.log('STATUS       CONTENT_HASH         MODIFIED_TIME    FILE_NAME');
+        console.log('STATUS       CONTENT_HASH         FILE_NAME');
       }
       for (const entry of entries) {
         const truncHash = entry.contentHash.slice(0, 16) + '...';
@@ -227,11 +249,18 @@ async function verifyCommandInner(options: VerifyOptions): Promise<void> {
             mismatches++;
           }
         }
-        console.log(`${status}   ${truncHash}  ${entry.modifiedTimeUtc}  ${entry.fileName}`);
-        if (fileStatuses && fileStatuses.get(entry.fileName)?.status === 'FAIL') {
-          const result = fileStatuses.get(entry.fileName)!;
-          console.error(`  expected: ${entry.contentHash}`);
-          console.error(`  computed: ${result.computedHash}`);
+        console.log(`${status}   ${truncHash}  ${entry.fileName}`);
+        if (fileStatuses) {
+          const result = fileStatuses.get(entry.fileName);
+          if (result?.matchedFiles) {
+            for (const f of result.matchedFiles) {
+              console.log(`  -> ${f}`);
+            }
+          }
+          if (result?.status === 'FAIL') {
+            console.error(`  expected: ${entry.contentHash}`);
+            console.error(`  computed: ${result.computedHash}`);
+          }
         }
       }
 

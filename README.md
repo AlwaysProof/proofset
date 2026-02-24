@@ -219,13 +219,13 @@ import {
 
 ## Simple Proofsets
 
-When selective disclosure isn't needed and you just want a hash representing a set of files, use `--simple`. This produces a plain text file listing each file's content hash, modified time, and filename. The root hash is SHA-256 (or SHA-512) of the entire file -- equivalent to `cat simple-proofset.txt | sha256sum` or PowerShell's `Get-FileHash simple-proofset.txt`.
+When selective disclosure isn't needed and you just want a hash representing a set of files, use `--simple`. This produces a plain text file listing each file's content hash and filename. The root hash is SHA-256 (or SHA-512) of the entire file -- equivalent to `cat simple-proofset.txt | sha256sum` or PowerShell's `Get-FileHash simple-proofset.txt`.
 
 No password is required. No secrets, no chaining -- just content hashes and a root hash for the set. The file format is:
 
 ```
-<content-hash> <modified-time> <filename>\r\n
-<content-hash> <modified-time> <filename>\r\n
+<content-hash> <filename>\r\n
+<content-hash> <filename>\r\n
 ...
 ```
 
