@@ -1,6 +1,6 @@
 {
   "name": "@alwaysproof/proofset",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "license": "MIT",
   "description": "Create and verify cryptographic proof sets for file integrity — library and CLI",
   "keywords": [
