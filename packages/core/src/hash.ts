@@ -28,3 +28,14 @@ export async function hashBytes(input: Uint8Array, algorithm: HashAlgorithm): Pr
   const digest = await crypto.subtle.digest(algorithm, input as ArrayBufferView<ArrayBuffer>);
   return toHex(new Uint8Array(digest));
 }
+
+/** Format a Date as `YYYYMMDD-hhmmss` in UTC. */
+export function formatModifiedTime(date: Date): string {
+  const y = date.getUTCFullYear();
+  const mo = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
+  const h = String(date.getUTCHours()).padStart(2, '0');
+  const mi = String(date.getUTCMinutes()).padStart(2, '0');
+  const s = String(date.getUTCSeconds()).padStart(2, '0');
+  return `${y}${mo}${d}-${h}${mi}${s}`;
+}

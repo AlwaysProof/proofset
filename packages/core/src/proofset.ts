@@ -13,17 +13,7 @@ import type {
   ProofsetFileDetails,
   ProofsetResult,
 } from './types.js';
-import { hashString, hashBytes } from './hash.js';
-
-function formatModifiedTime(date: Date): string {
-  const y = date.getUTCFullYear();
-  const mo = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const d = String(date.getUTCDate()).padStart(2, '0');
-  const h = String(date.getUTCHours()).padStart(2, '0');
-  const mi = String(date.getUTCMinutes()).padStart(2, '0');
-  const s = String(date.getUTCSeconds()).padStart(2, '0');
-  return `${y}${mo}${d}-${h}${mi}${s}`;
-}
+import { hashString, hashBytes, formatModifiedTime } from './hash.js';
 
 function buildFileDetails(
   fileSecret: string,

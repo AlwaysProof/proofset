@@ -19,7 +19,8 @@ program
   .description('Create a proofset from source files')
   .requiredOption('-s, --source <dir>', 'Source files directory')
   .option('-o, --output <dir>', 'Output directory for hashset files', '.')
-  .requiredOption('-p, --password <seed>', 'Seed password (use "-" to prompt securely)')
+  .option('-p, --password <seed>', 'Seed password (use "-" to prompt securely)')
+  .option('--simple', 'Create a simple proofset (content hash + modified time + filename)')
   .option('--algo <algorithm>', 'Hash algorithm (sha256 or sha512)', 'sha256')
   .action(createCommand);
 

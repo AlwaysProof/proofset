@@ -1,7 +1,7 @@
 // Copyright (c) 2016–2026 Ashley R. Thomas. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root.
 
-import { createProofset } from '../index.js';
+import { createProofset, createSimpleProofset } from '../index.js';
 import type { SourceFileEntry, HashAlgorithm } from '../index.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -49,7 +49,8 @@ function promptPassword(): Promise<string> {
 export async function createCommand(options: {
   source: string;
   output: string;
-  password: string;
+  password?: string;
+  simple?: boolean;
   algo: string;
 }): Promise<void> {
   const sourceDir = path.resolve(options.source);
@@ -60,13 +61,14 @@ export async function createCommand(options: {
     process.exit(1);
   }
 
-  let seedPassword = options.password;
-  if (seedPassword === '-') {
-    seedPassword = await promptPassword();
-    if (!seedPassword) {
-      console.error('No password provided.');
-      process.exit(1);
-    }
+  if (options.simple && options.password) {
+    console.error('Error: --simple and --password (-p) cannot be used together.');
+    process.exit(1);
+  }
+
+  if (!options.simple && !options.password) {
+    console.error('Error: --password (-p) is required unless --simple is specified.');
+    process.exit(1);
   }
 
   const algorithm: HashAlgorithm = options.algo === 'sha512' ? 'SHA-512' : 'SHA-256';
@@ -79,11 +81,43 @@ export async function createCommand(options: {
   });
   relativePaths.sort();
 
+  if (options.simple) {
+    async function* simpleFileEntries(): AsyncIterable<SourceFileEntry> {
+      for (const relPath of relativePaths) {
+        const fullFilePath = path.join(sourceDir, relPath);
+        const stat = fs.statSync(fullFilePath);
+        const content = fs.readFileSync(fullFilePath);
+
+        yield {
+          relativePath: path.basename(relPath),
+          modifiedTime: stat.mtime,
+          content: new Uint8Array(content),
+        };
+      }
+    }
+
+    const result = await createSimpleProofset(simpleFileEntries(), { algorithm });
+
+    fs.mkdirSync(outputDir, { recursive: true });
+    fs.writeFileSync(path.join(outputDir, 'simple-proofset.txt'), result.content);
+    console.log(result.hash);
+    return;
+  }
+
+  let seedPassword = options.password!;
+  if (seedPassword === '-') {
+    seedPassword = await promptPassword();
+    if (!seedPassword) {
+      console.error('No password provided.');
+      process.exit(1);
+    }
+  }
+
   async function* fileEntries(): AsyncIterable<SourceFileEntry> {
     for (const relPath of relativePaths) {
-      const fullPath = path.join(sourceDir, relPath);
-      const stat = fs.statSync(fullPath);
-      const content = fs.readFileSync(fullPath);
+      const fullFilePath = path.join(sourceDir, relPath);
+      const stat = fs.statSync(fullFilePath);
+      const content = fs.readFileSync(fullFilePath);
 
       const fileName = path.basename(relPath);
       yield {

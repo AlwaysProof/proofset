@@ -7,6 +7,7 @@
 // (SubtleCrypto, TextEncoder, Uint8Array, etc.).
 
 export { createProofset } from './proofset.js';
+export { createSimpleProofset } from './simple-proofset.js';
 export {
   inferAlgorithm,
   verifyFileDetailsLine,
@@ -19,8 +20,12 @@ export {
   verifyFileContentHash,
   matchDetailEntriesByPath,
   matchDetailEntriesByHash,
+  isSimpleProofsetFormat,
+  parseSimpleProofsetLine,
+  extractSimpleProofsetLines,
+  verifySimpleProofsetHash,
 } from './verify.js';
-export { hashString, hashBytes } from './hash.js';
+export { hashString, hashBytes, formatModifiedTime } from './hash.js';
 export type {
   HashAlgorithm,
   SourceFileEntry,
@@ -30,4 +35,7 @@ export type {
   ContentMatchStatus,
   ContentMatchResult,
   ProofsetResult,
+  SimpleProofsetConfig,
+  SimpleProofsetEntry,
+  SimpleProofsetResult,
 } from './types.js';

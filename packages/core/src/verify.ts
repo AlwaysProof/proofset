@@ -6,7 +6,7 @@
 // (e.g., node:fs, node:path, Buffer, process). Use only standard Web APIs
 // (SubtleCrypto, TextEncoder, Uint8Array, etc.).
 
-import type { HashAlgorithm, ParsedFileDetailsLine, ContentMatchResult } from './types.js';
+import type { HashAlgorithm, ParsedFileDetailsLine, ContentMatchResult, SimpleProofsetEntry } from './types.js';
 import { hashString, hashBytes } from './hash.js';
 
 export function inferAlgorithm(hexHash: string): HashAlgorithm {
@@ -242,4 +242,62 @@ export function matchDetailEntriesByHash(
       matchedFiles,
     };
   });
+}
+
+// ---------------------------------------------------------------------------
+// Simple proofset verification
+// ---------------------------------------------------------------------------
+
+// Simple proofset line: hex hash, space, YYYYMMDD-hhmmss, space, filename
+const SIMPLE_LINE_RE = /^[0-9a-fA-F]{64,128} \d{8}-\d{6} .+$/;
+
+/**
+ * Detect whether content is a simple proofset (vs standard proofset format).
+ * Checks the first non-empty line: simple lines use spaces, standard lines use `: `.
+ */
+export function isSimpleProofsetFormat(content: string): boolean {
+  const lines = content.split(/\r?\n/).filter(Boolean);
+  if (lines.length === 0) return false;
+  const first = lines[0];
+  // Standard proofset lines have `<hash>: ` — simple lines do not
+  if (DETAIL_LINE_RE.test(first)) return false;
+  return SIMPLE_LINE_RE.test(first);
+}
+
+/**
+ * Parse a single simple proofset line into its component fields.
+ * Format: `<content-hash> <modified-time> <filename>`
+ * The filename is everything after the second space (may contain spaces).
+ */
+export function parseSimpleProofsetLine(line: string): SimpleProofsetEntry {
+  const firstSpace = line.indexOf(' ');
+  if (firstSpace === -1) throw new Error('Invalid simple proofset line: missing fields');
+  const secondSpace = line.indexOf(' ', firstSpace + 1);
+  if (secondSpace === -1) throw new Error('Invalid simple proofset line: missing filename');
+
+  return {
+    contentHash: line.slice(0, firstSpace),
+    modifiedTimeUtc: line.slice(firstSpace + 1, secondSpace),
+    fileName: line.slice(secondSpace + 1),
+  };
+}
+
+/**
+ * Extract non-empty lines from simple proofset content.
+ */
+export function extractSimpleProofsetLines(content: string): string[] {
+  return content.split(/\r?\n/).filter(Boolean);
+}
+
+/**
+ * Verify a simple proofset's root hash by hashing the content and comparing.
+ * The content should be the full file content (lines joined with \r\n).
+ */
+export async function verifySimpleProofsetHash(
+  content: string,
+  expectedHash: string,
+): Promise<boolean> {
+  const algorithm = inferAlgorithm(expectedHash);
+  const computed = await hashBytes(new TextEncoder().encode(content), algorithm);
+  return computed === expectedHash.toLowerCase();
 }

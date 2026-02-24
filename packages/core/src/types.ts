@@ -59,3 +59,19 @@ export interface ProofsetResult {
   fileDetails: ProofsetFileDetails[];
   fileDetailsLineList: string;
 }
+
+export interface SimpleProofsetConfig {
+  algorithm: HashAlgorithm;
+}
+
+export interface SimpleProofsetEntry {
+  contentHash: string;
+  modifiedTimeUtc: string;
+  fileName: string;
+}
+
+export interface SimpleProofsetResult {
+  hash: string;              // root hash (lowercase hex)
+  content: string;           // the full \r\n-terminated list
+  entries: SimpleProofsetEntry[];
+}

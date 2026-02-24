@@ -46,7 +46,8 @@ The **hashset hash** is printed to stdout -- this is the single value you publis
 |------|-------------|---------|
 | `-s, --source <dir>` | Source files directory | (required) |
 | `-o, --output <dir>` | Output directory | `.` |
-| `-p, --password <seed>` | Seed password (`-` to prompt securely) | (required) |
+| `-p, --password <seed>` | Seed password (`-` to prompt securely) | (required unless `--simple`) |
+| `--simple` | Create a simple proofset (no password, no selective disclosure) | |
 | `--algo <algorithm>` | `sha256` or `sha512` | `sha256` |
 
 ### Verify a proofset
@@ -215,6 +216,33 @@ import {
 - **Email commitment** -- Send a hashset hash in an email (BCC yourself). The provider's DKIM signature covers the email body, creating a signed record that the hash existed at send time. Combine with a blockchain commitment of the email hash for layered integrity that survives subsequent key rotation/compromise.
 
 - **Social media predictions** -- Post a hashset hash publicly, then disclose individual items later to prove what you committed to. Useful for prediction games, friendly bets, or "I called it" moments -- the commitment strength matches the informal context.
+
+## Simple Proofsets
+
+When selective disclosure isn't needed and you just want a hash representing a set of files, use `--simple`. This produces a plain text file listing each file's content hash, modified time, and filename. The root hash is SHA-256 (or SHA-512) of the entire file -- equivalent to `cat simple-proofset.txt | sha256sum` or PowerShell's `Get-FileHash simple-proofset.txt`.
+
+No password is required. No secrets, no chaining -- just content hashes and a root hash for the set. The file format is:
+
+```
+<content-hash> <modified-time> <filename>\r\n
+<content-hash> <modified-time> <filename>\r\n
+...
+```
+
+```bash
+# Create a simple proofset
+proofset create --simple -s ./my-files -o ./output
+
+# View the root hash and list entries
+proofset verify -d simple-proofset.txt
+
+# Verify file contents against the simple proofset
+proofset verify -d simple-proofset.txt -f ./my-files
+```
+
+When verifying without `-f`, entries are listed as `UNVERIFIED` -- this means the tool computed the root hash but had no source files to check against. The root hash itself is just `SHA-256(file content)`, so you can independently confirm it with standard tools. The verify command provides a consistent interface for inspecting both simple and full proofsets, and auto-detects the format.
+
+A web app, for example, might produce either format depending on the user's needs -- simple for lightweight file hashing, full for selective disclosure -- and this tool verifies both the same way. It also serves as a reference implementation against which users can confirm results independently using standard OS commands and tools.
 
 ## How It Works
 
