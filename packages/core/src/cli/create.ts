@@ -3,9 +3,11 @@
 
 import { createProofset, createSimpleProofset } from '../index.js';
 import type { SourceFileEntry, HashAlgorithm } from '../index.js';
+import { nodeHasherFactory } from '../hashers/node.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
+import { Readable } from 'node:stream';
 import fg from 'fast-glob';
 
 function promptPassword(): Promise<string> {
@@ -86,17 +88,16 @@ export async function createCommand(options: {
       for (const relPath of relativePaths) {
         const fullFilePath = path.join(sourceDir, relPath);
         const stat = fs.statSync(fullFilePath);
-        const content = fs.readFileSync(fullFilePath);
 
         yield {
           relativePath: path.basename(relPath),
           modifiedTime: stat.mtime,
-          content: new Uint8Array(content),
+          content: Readable.toWeb(fs.createReadStream(fullFilePath)) as ReadableStream<Uint8Array>,
         };
       }
     }
 
-    const result = await createSimpleProofset(simpleFileEntries(), { algorithm });
+    const result = await createSimpleProofset(simpleFileEntries(), { algorithm, hasher: nodeHasherFactory });
 
     fs.mkdirSync(outputDir, { recursive: true });
     fs.writeFileSync(path.join(outputDir, 'simple-proofset.txt'), result.content);
@@ -117,14 +118,13 @@ export async function createCommand(options: {
     for (const relPath of relativePaths) {
       const fullFilePath = path.join(sourceDir, relPath);
       const stat = fs.statSync(fullFilePath);
-      const content = fs.readFileSync(fullFilePath);
 
       const fileName = path.basename(relPath);
       yield {
         relativePath: fileName,
         fullPath: relPath.replace(/\//g, '\\'),
         modifiedTime: stat.mtime,
-        content: new Uint8Array(content),
+        content: Readable.toWeb(fs.createReadStream(fullFilePath)) as ReadableStream<Uint8Array>,
       };
     }
   }
@@ -132,6 +132,7 @@ export async function createCommand(options: {
   const result = await createProofset(fileEntries(), {
     seedPassword,
     algorithm,
+    hasher: nodeHasherFactory,
   });
 
   // Ensure output directory exists

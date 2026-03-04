@@ -13,7 +13,7 @@ import type {
   ProofsetFileDetails,
   ProofsetResult,
 } from './types.js';
-import { hashString, hashBytes, formatModifiedTime } from './hash.js';
+import { hashString, hashBytes, hashContent, formatModifiedTime } from './hash.js';
 
 function buildFileDetails(
   fileSecret: string,
@@ -29,7 +29,7 @@ export async function createProofset(
   files: AsyncIterable<SourceFileEntry>,
   config: ProofsetConfig,
 ): Promise<ProofsetResult> {
-  const { seedPassword, algorithm } = config;
+  const { seedPassword, algorithm, hasher } = config;
 
   let prevFileSecret: string | null = null;
   let prevFileDetailsHash: string | null = null;
@@ -41,7 +41,7 @@ export async function createProofset(
   let fileSecret = await hashString(seedPassword, algorithm);
 
   for await (const file of files) {
-    const contentHash = await hashBytes(file.content, algorithm);
+    const contentHash = await hashContent(file.content, algorithm, hasher);
     const modifiedTimeUtc = formatModifiedTime(file.modifiedTime);
 
     // Determine which paths to process

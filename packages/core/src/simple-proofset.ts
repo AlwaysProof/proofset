@@ -12,18 +12,18 @@ import type {
   SimpleProofsetEntry,
   SimpleProofsetResult,
 } from './types.js';
-import { hashBytes } from './hash.js';
+import { hashBytes, hashContent } from './hash.js';
 
 export async function createSimpleProofset(
   files: AsyncIterable<SourceFileEntry>,
   config: SimpleProofsetConfig,
 ): Promise<SimpleProofsetResult> {
-  const { algorithm } = config;
+  const { algorithm, hasher } = config;
   const entries: SimpleProofsetEntry[] = [];
   const lines: string[] = [];
 
   for await (const file of files) {
-    const contentHash = await hashBytes(file.content, algorithm);
+    const contentHash = await hashContent(file.content, algorithm, hasher);
     const fileName = file.relativePath;
 
     entries.push({ contentHash, fileName });

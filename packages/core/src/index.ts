@@ -25,7 +25,7 @@ export {
   extractSimpleProofsetLines,
   verifySimpleProofsetHash,
 } from './verify.js';
-export { hashString, hashBytes, formatModifiedTime } from './hash.js';
+export { hashString, hashBytes, hashContent, formatModifiedTime } from './hash.js';
 export type {
   HashAlgorithm,
   SourceFileEntry,
@@ -38,4 +38,6 @@ export type {
   SimpleProofsetConfig,
   SimpleProofsetEntry,
   SimpleProofsetResult,
+  IncrementalHasher,
+  HasherFactory,
 } from './types.js';

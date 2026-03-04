@@ -12,7 +12,7 @@ const program = new Command();
 program
   .name('proofset')
   .description('Create and verify proofsets — hashset commitment with selective disclosure')
-  .version('0.1.6');
+  .version('0.1.7');
 
 program
   .command('create')

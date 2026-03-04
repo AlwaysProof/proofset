@@ -12,12 +12,22 @@ export interface SourceFileEntry {
   relativePath: string;
   fullPath?: string;
   modifiedTime: Date;
-  content: Uint8Array;
+  content: Uint8Array | ReadableStream<Uint8Array>;
 }
+
+/** Incremental hasher supporting chunked update/digest. */
+export interface IncrementalHasher {
+  update(chunk: Uint8Array): void;
+  digest(): Promise<string>;
+}
+
+/** Factory that creates an IncrementalHasher for a given algorithm. */
+export type HasherFactory = (algorithm: HashAlgorithm) => IncrementalHasher | Promise<IncrementalHasher>;
 
 export interface ProofsetConfig {
   seedPassword: string;
   algorithm: HashAlgorithm;
+  hasher?: HasherFactory;
 }
 
 export interface ProofsetFileDetails {
@@ -62,6 +72,7 @@ export interface ProofsetResult {
 
 export interface SimpleProofsetConfig {
   algorithm: HashAlgorithm;
+  hasher?: HasherFactory;
 }
 
 export interface SimpleProofsetEntry {
