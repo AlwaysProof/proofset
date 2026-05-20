@@ -25,7 +25,13 @@ export interface IncrementalHasher {
 export type HasherFactory = (algorithm: HashAlgorithm) => IncrementalHasher | Promise<IncrementalHasher>;
 
 export interface ProofsetConfig {
-  seedPassword: string;
+  /**
+   * Secret string that seeds the per-file chained secret.
+   * High-entropy values are strongly recommended; tools SHOULD auto-generate
+   * 32 random bytes (hex) when not user-supplied.
+   * Previously called `seedPassword` (v1 terminology: "seed password").
+   */
+  proofsetSeed: string;
   algorithm: HashAlgorithm;
   hasher?: HasherFactory;
 }
@@ -67,6 +73,12 @@ export interface ProofsetResult {
   hashsetHash: string;
   fileDetailsHashList: string;
   fileDetails: ProofsetFileDetails[];
+  /**
+   * The body of the details file: just the `file_details_line` entries
+   * joined by `\r\n` (with a trailing `\r\n`). Does NOT include any preamble.
+   * Callers that want a `proofset_seed:` preamble line should prepend it
+   * themselves (see `buildDetailsFile`).
+   */
   fileDetailsLineList: string;
 }
 

@@ -21,8 +21,8 @@ Proofset is a scheme for representing all files in a directory as a single hash 
 |------|------------|
 | **H(x)** | The chosen hash function (SHA-256 or SHA-512) applied to the UTF-8 encoding of *x*. |
 | **source file** | A file in the input directory to be committed. |
-| **seed password** | A secret string used to initialize the chained per-file secret. |
-| **file\_secret** | A per-entry chained secret derived from the seed password and prior entries. Hex-encoded, **lowercase**. |
+| **proofset\_seed** | A secret string used to initialize the chained per-file secret. The creator's tool MAY auto-generate this value. Previously called "seed password" in v1. |
+| **file\_secret** | A per-entry chained secret derived from the proofset\_seed and prior entries. Hex-encoded, **lowercase**. |
 | **file\_content\_hash** | The hash of the raw file bytes. Hex-encoded, **UPPERCASE**. |
 | **file\_modified\_time\_utc** | The file's last-modified time in UTC, formatted as `YYYYMMDD-hhmmss`. |
 | **file\_details** | The concatenation of all per-entry fields for a single entry (defined in [Section 2.2](#22-file-details-hash)). |
@@ -43,8 +43,8 @@ All operations within a single proofset use the same hash algorithm. SHA-256 and
 The `file_secret` is a chained value that links entries together:
 
 ```
-file_secret[0] = H(seed_password)                                           -- lowercase hex
-file_secret[i] = H(seed_password ‖ file_secret[i-1] ‖ file_details_hash[i-1])  -- lowercase hex
+file_secret[0] = H(proofset_seed)                                            -- lowercase hex
+file_secret[i] = H(proofset_seed ‖ file_secret[i-1] ‖ file_details_hash[i-1])  -- lowercase hex
 ```
 
 Each file may produce one or two entries (see [Section 2.4](#24-path-variants)). The chain advances **per entry**, not per file.
@@ -118,6 +118,21 @@ Contains the `file_details_line_list` -- one `file_details_line` per entry in th
 
 This file is kept **private** by the creator. Individual lines can be selectively disclosed.
 
+#### 3.1.1 Optional Preamble
+
+A details file MAY contain an optional preamble before the first `file_details_line`. Any line not matching the `file_details_line` format (`<64-or-128-char-hex>: ...`) is treated as preamble and **completely ignored** in any hash calculation. This is consistent with v1 behavior (see [Section 8](#8-compatibility)), which used preamble/footer lines for human-readable headers and summaries.
+
+Implementations writing a new proofset SHOULD include the following preamble line as a record of the seed used:
+
+```
+proofset_seed: <proofset_seed>
+<file_details_line_list>
+```
+
+The `proofset_seed:` line serves only as documentation -- it allows the creator to retain a record of the seed for later regeneration or audit. The seed value MAY be blank (`proofset_seed:` with no value) if the creator chooses to store the seed elsewhere (e.g., memorized or in a separate vault). A blank or absent preamble line has no effect on verification: the seed is only needed for proofset creation, never for verification of an existing proofset.
+
+Verifiers MUST ignore preamble lines entirely. The seed value in the preamble is informational and never participates in any hash calculation.
+
 ### 3.2 File Details Hash List File
 
 Contains the `file_details_hash_list` -- only the file\_details\_hash values, one per line with `\r\n` terminators. This file can be shared publicly to allow verifiers to confirm the hashset\_hash, without revealing any detail about individual entries.
@@ -166,7 +181,7 @@ Given both output files:
 ### 6.1 Parameters
 
 - **Algorithm:** SHA-256
-- **Seed password:** `abc`
+- **proofset\_seed:** `abc`
 - **Path mode:** Relative path + filename only (current default)
 - **File ordering:** Lexicographic by relative path
 - **Source files:**
@@ -179,7 +194,7 @@ Given both output files:
 
 Each file's content is the text `this is fileN.txt` followed by `\r\n` (19 bytes).
 
-Generated with: `proofset create -s example1/source-files -o example1-output -p abc`
+Generated with: `proofset create -s example1/source-files -o example1-output --proofset-seed abc`
 
 ### 6.2 Expected Detail Entries
 
@@ -270,11 +285,15 @@ ea361143c639c8f51b8a89ce1891c25d8809edd0e406aa1adf319bd169e43e84
 
 ## 7. Security Considerations
 
-- **Seed password strength** -- The seed password is hashed with a single invocation of H to derive the initial `file_secret`. A weak seed password could be brute-forced if any file\_details\_lines are disclosed. Consider using a high-entropy password or a key derivation function (e.g. PBKDF2, Argon2) in future versions.
+- **proofset\_seed strength** -- The proofset\_seed is hashed with a single invocation of H to derive the initial `file_secret`. A low-entropy seed could be brute-forced from any disclosed `file_details_line` (which exposes a `file_secret`). Tools SHOULD auto-generate a high-entropy seed by default (e.g. 32 random bytes encoded as hex). Users who supply their own seed SHOULD use a high-entropy value (passphrase from a wordlist, random hex string, etc.). A future revision may add a key derivation function (e.g. PBKDF2, Argon2) for user-supplied seeds.
+
+- **proofset\_seed exposure via disclosure** -- The chain `file_secret[0] = H(proofset_seed)` means disclosure of entry 0 exposes a clean preimage target for the seed. Disclosure of consecutive entries `i-1, i` also constrains the seed because `file_secret[i]` depends on known prior chain state. Non-consecutive disclosures of non-zero entries do not bind the seed (prior chain state remains unknown). In all cases, brute-force feasibility is bounded by the entropy of the seed.
+
+- **proofset\_seed is creation-only** -- The seed is required at proofset creation time only; verification of an existing proofset does not require the seed because each `file_details_line` already carries its `file_secret`. The seed only matters again if the creator wishes to regenerate the proofset from the source files.
 
 - **File ordering** -- The hashset\_hash depends on the order in which files are processed. Implementations must define a deterministic ordering (e.g. lexicographic sort of relative paths) to ensure reproducibility.
 
-- **Secret chaining** -- Disclosing a `file_secret` for one entry does not reveal the secret for other entries, provided the seed password remains confidential. However, disclosing the seed password and any file\_details\_line allows computing all subsequent secrets in the chain.
+- **Secret chaining** -- Disclosing a `file_secret` for one entry does not reveal the secret for other entries, provided the proofset\_seed remains confidential. However, disclosing the proofset\_seed and any `file_details_line` allows computing all subsequent secrets in the chain.
 
 - **Timestamp trust** -- The `file_modified_time_utc` is taken from the filesystem and is not independently verified. It reflects what the creator's system reported at generation time.
 

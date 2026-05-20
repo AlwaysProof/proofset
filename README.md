@@ -11,6 +11,26 @@ Proofset represents all files in a directory as a single hash value (the **hashs
 - **Verifiability** -- Anyone can verify a disclosed file belongs to the committed set using only standard hash functions.
 - **Simplicity** -- Uses only SHA-256 or SHA-512 and string concatenation. No additional cryptographic primitives.
 
+## Staged Disclosure
+
+Once you've created a proofset, you choose what to release -- and when. There are three things you can hand out, each independently verifiable:
+
+1. **The `hashset_hash`** -- one hash representing the whole set. Compact and opaque: by itself, it just attests that *something* of this commitment exists. Well-suited to early, low-noise publication (a blockchain transaction, a self-addressed email, a public timestamp). It reveals neither the file count nor any file detail.
+
+2. **The `file_details_hash_list`** -- the list of per-item hashes that the `hashset_hash` summarizes. Releasing this reveals how many items are in the set and lets anyone independently re-derive the `hashset_hash` (so the list is provably tied to your earlier commitment). It still says nothing about the contents of individual items.
+
+3. **Individual `file_details_line` entries** -- the actual per-file details (content hash, modified time, path/name). Disclose any subset, in any order, at any time. Each disclosed line is independently verifiable, and a recipient who also has the hash list can confirm the line is part of your committed set.
+
+You don't have to release all three of the pieces above, and they don't have to come out in the order listed. A few patterns:
+
+- **Early commitment, late reveal** -- publish `hashset_hash` to a blockchain on day zero. Years later, share the hash list and selected detail lines to prove what existed back then.
+- **Announce the size** -- publish the hash list to assert "I have N items committed"; release detail lines individually as occasions arise.
+- **Disclose first, anchor later if challenged** -- share a single detail line (or even the underlying file). If someone disputes that the file existed years ago, point to the `hashset_hash` you published back then, walk them through the hash list, and the new detail line ties cleanly into the chain.
+
+Each later disclosure ties cryptographically back to whatever was released earlier: a detail line shared years after the `hashset_hash` was published still verifies against it via the hash list. The strength of your proof-of-existence depends on how early you anchored *either* the `hashset_hash` or the `file_details_hash_list` publicly -- whichever appears first in the public record sets the floor for how far back the set is provably attested.
+
+See [SPEC.md](packages/core/SPEC.md#5-selective-disclosure-workflow) for the precise verification rules at each stage.
+
 ## Install
 
 ```bash
@@ -30,7 +50,7 @@ Also available as `proofset` (re-exports `@alwaysproof/proofset`).
 ### Create a proofset
 
 ```bash
-proofset create -s ./my-files -o ./output -p mysecret
+proofset create -s ./my-files -o ./output
 ```
 
 This scans `./my-files`, generates the proofset, and writes two files to `./output`:
@@ -38,7 +58,9 @@ This scans `./my-files`, generates the proofset, and writes two files to `./outp
 - `proofset-details.txt` -- Detail lines for each file (keep private, disclose selectively)
 - `proofset-file-details-hash-list.txt` -- Hash list (can be shared publicly)
 
-The **hashset hash** is printed to stdout -- this is the single value you publish.
+The **hashset hash** is printed to stdout -- this is the single value you publish. A high-entropy `proofset_seed` is auto-generated and recorded as a `proofset_seed:` preamble line at the top of the details file (and echoed to stderr for capture). Supply your own with `-p <seed>` if you want a specific value.
+
+The seed is only needed to **regenerate** the same proofset later (which also requires the same files with the same content, timestamps, and ordering) or to demonstrate how it was created. Verification of an existing proofset -- including the `hashset_hash` -- never requires the seed. Storing it in the preamble is convenient; you can remove it freely afterward, or use `--no-store-seed` at creation time to keep it out of the file entirely.
 
 **Options:**
 
@@ -46,8 +68,10 @@ The **hashset hash** is printed to stdout -- this is the single value you publis
 |------|-------------|---------|
 | `-s, --source <dir>` | Source files directory | (required) |
 | `-o, --output <dir>` | Output directory | `.` |
-| `-p, --password <seed>` | Seed password (`-` to prompt securely) | (required unless `--simple`) |
-| `--simple` | Create a simple proofset (no password, no selective disclosure) | |
+| `-p, --proofset-seed <seed>` | Proofset seed value (`-` to prompt securely) | auto-generated |
+| `--no-store-seed` | Omit the seed value from the details file preamble (writes blank `proofset_seed:`) | |
+| `--password <seed>` | **Deprecated** alias for `--proofset-seed` | |
+| `--simple` | Create a simple proofset (content hash + filename only, no selective disclosure) | |
 | `--algo <algorithm>` | `sha256` or `sha512` | `sha256` |
 
 ### Verify a proofset
@@ -129,7 +153,7 @@ async function* myFiles() {
 }
 
 const result = await createProofset(myFiles(), {
-  seedPassword: 'mysecret',
+  proofsetSeed: 'mysecret',           // or use generateProofsetSeed() for a random 32-byte hex seed
   algorithm: 'SHA-256',
 });
 
@@ -181,7 +205,7 @@ const hashResults = matchDetailEntriesByHash(detailLines, hashToFiles);
 import type {
   HashAlgorithm,          // 'SHA-256' | 'SHA-512'
   SourceFileEntry,        // { relativePath, fullPath?, modifiedTime, content }
-  ProofsetConfig,         // { seedPassword, algorithm }
+  ProofsetConfig,         // { proofsetSeed, algorithm }
   ProofsetResult,         // { hashsetHash, fileDetailsHashList, fileDetails, fileDetailsLineList }
   ProofsetFileDetails,    // { fileDetailsHash, fileSecret, modifiedTimeUtc, contentHash, filePath }
   ParsedFileDetailsLine,  // { fileDetailsHash, fileSecret, modifiedTimeUtc, fileContentHash, filePath }
@@ -200,6 +224,9 @@ import {
   extractDetailLines,            // parse detail lines from a details file (handles v1 format)
   buildHashListFromDetailLines,  // build hash list string from detail lines
   isValidHashListFormat,         // validate a string is one hash per line
+  generateProofsetSeed,          // generate a random 32-byte hex seed (Web Crypto)
+  buildDetailsFile,              // prepend an optional `proofset_seed:` preamble to a details body
+  parseProofsetSeedFromDetails,  // extract the seed value from a details file preamble (or null)
 } from '@alwaysproof/proofset';
 ```
 

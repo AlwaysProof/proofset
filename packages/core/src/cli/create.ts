@@ -1,60 +1,39 @@
 // Copyright (c) 2016–2026 Ashley R. Thomas. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root.
 
-import { createProofset, createSimpleProofset } from '../index.js';
+import {
+  createProofset,
+  createSimpleProofset,
+  buildDetailsFile,
+  generateProofsetSeed,
+} from '../index.js';
 import type { SourceFileEntry, HashAlgorithm } from '../index.js';
 import { nodeHasherFactory } from '../hashers/node.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import * as readline from 'node:readline';
 import { Readable } from 'node:stream';
 import fg from 'fast-glob';
 
-function promptPassword(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stderr,
-    });
-    // Disable echo by writing ANSI escape to hide input
-    process.stderr.write('Seed password: ');
-    if (process.stdin.isTTY) {
-      process.stdin.setRawMode(true);
-    }
-    let password = '';
-    process.stdin.resume();
-    process.stdin.setEncoding('utf-8');
-    const onData = (ch: string) => {
-      if (ch === '\n' || ch === '\r' || ch === '\u0004') {
-        if (process.stdin.isTTY) {
-          process.stdin.setRawMode(false);
-        }
-        process.stdin.removeListener('data', onData);
-        process.stderr.write('\n');
-        rl.close();
-        resolve(password);
-      } else if (ch === '\u0003') {
-        // Ctrl+C
-        rl.close();
-        reject(new Error('Aborted'));
-      } else if (ch === '\u007f' || ch === '\b') {
-        // Backspace
-        password = password.slice(0, -1);
-      } else {
-        password += ch;
-      }
-    };
-    process.stdin.on('data', onData);
-  });
+/**
+ * Prompt for a value via @inquirer/password (masked with asterisks).
+ * Uses dynamic import to keep the dependency optional at module-load time.
+ */
+async function promptMasked(message: string): Promise<string> {
+  const { default: password } = await import('@inquirer/password');
+  return password({ message, mask: '*' });
 }
 
 export async function createCommand(options: {
   source: string;
   output: string;
+  proofsetSeed?: string;
   password?: string;
   simple?: boolean;
   algo: string;
+  // Commander emits `--no-store-seed` as `storeSeed: false` (default true).
+  storeSeed?: boolean;
 }): Promise<void> {
+  const storeSeedInFile = options.storeSeed !== false;
   const sourceDir = path.resolve(options.source);
   const outputDir = path.resolve(options.output);
 
@@ -63,13 +42,22 @@ export async function createCommand(options: {
     process.exit(1);
   }
 
-  if (options.simple && options.password) {
-    console.error('Error: --simple and --password (-p) cannot be used together.');
-    process.exit(1);
+  // --password is a deprecated alias for --proofset-seed.
+  // If both are supplied, --proofset-seed wins; warn either way when --password is used.
+  let seedFlag = options.proofsetSeed;
+  if (options.password !== undefined) {
+    console.error(
+      'warning: --password is deprecated; use --proofset-seed (or -p) instead.',
+    );
+    if (seedFlag === undefined) seedFlag = options.password;
   }
 
-  if (!options.simple && !options.password) {
-    console.error('Error: --password (-p) is required unless --simple is specified.');
+  if (options.simple && seedFlag !== undefined) {
+    console.error('Error: --simple and --proofset-seed cannot be used together.');
+    process.exit(1);
+  }
+  if (options.simple && !storeSeedInFile) {
+    console.error('Error: --simple and --no-store-seed cannot be used together.');
     process.exit(1);
   }
 
@@ -105,13 +93,23 @@ export async function createCommand(options: {
     return;
   }
 
-  let seedPassword = options.password!;
-  if (seedPassword === '-') {
-    seedPassword = await promptPassword();
-    if (!seedPassword) {
-      console.error('No password provided.');
+  // Resolve the seed:
+  //   - "-" → prompt securely (masked).
+  //   - explicit value → use it.
+  //   - omitted → auto-generate a fresh 32-byte hex seed.
+  let proofsetSeed: string;
+  let seedWasGenerated = false;
+  if (seedFlag === '-') {
+    proofsetSeed = await promptMasked('Enter proofset_seed:');
+    if (!proofsetSeed) {
+      console.error('No proofset_seed provided.');
       process.exit(1);
     }
+  } else if (seedFlag !== undefined) {
+    proofsetSeed = seedFlag;
+  } else {
+    proofsetSeed = generateProofsetSeed();
+    seedWasGenerated = true;
   }
 
   async function* fileEntries(): AsyncIterable<SourceFileEntry> {
@@ -130,23 +128,37 @@ export async function createCommand(options: {
   }
 
   const result = await createProofset(fileEntries(), {
-    seedPassword,
+    proofsetSeed,
     algorithm,
     hasher: nodeHasherFactory,
+  });
+
+  // Build the details file body. By default we record the seed in the preamble.
+  // --no-store-seed writes a blank `proofset_seed:` line (documents that a seed
+  // was used but is not stored in the file).
+  const preambleSeed = !storeSeedInFile ? '' : proofsetSeed;
+  const detailsFileBody = buildDetailsFile(result.fileDetailsLineList, {
+    proofsetSeed: preambleSeed,
   });
 
   // Ensure output directory exists
   fs.mkdirSync(outputDir, { recursive: true });
 
   // Write output files
-  fs.writeFileSync(
-    path.join(outputDir, 'proofset-details.txt'),
-    result.fileDetailsLineList,
-  );
+  fs.writeFileSync(path.join(outputDir, 'proofset-details.txt'), detailsFileBody);
   fs.writeFileSync(
     path.join(outputDir, 'proofset-file-details-hash-list.txt'),
     result.fileDetailsHashList,
   );
+
+  // Print seed to stderr if it was auto-generated or omitted from the file,
+  // so the user can capture it. Goes to stderr so it doesn't pollute stdout
+  // (which carries the hashset_hash for scripting).
+  if (seedWasGenerated && storeSeedInFile) {
+    console.error(`proofset_seed (auto-generated): ${proofsetSeed}`);
+  } else if (!storeSeedInFile) {
+    console.error(`proofset_seed (not stored in details file): ${proofsetSeed}`);
+  }
 
   console.log(result.hashsetHash);
 }

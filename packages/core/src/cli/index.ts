@@ -12,14 +12,22 @@ const program = new Command();
 program
   .name('proofset')
   .description('Create and verify proofsets — hashset commitment with selective disclosure')
-  .version('0.1.7');
+  .version('0.1.8');
 
 program
   .command('create')
   .description('Create a proofset from source files')
   .requiredOption('-s, --source <dir>', 'Source files directory')
   .option('-o, --output <dir>', 'Output directory for hashset files', '.')
-  .option('-p, --password <seed>', 'Seed password (use "-" to prompt securely)')
+  .option(
+    '-p, --proofset-seed <seed>',
+    'Proofset seed (use "-" to prompt securely; omit to auto-generate)',
+  )
+  .option('--password <seed>', '[deprecated] Alias for --proofset-seed')
+  .option(
+    '--no-store-seed',
+    'Do not write the seed value into the details file preamble (blank line only)',
+  )
   .option('--simple', 'Create a simple proofset (content hash + filename)')
   .option('--algo <algorithm>', 'Hash algorithm (sha256 or sha512)', 'sha256')
   .action(createCommand);

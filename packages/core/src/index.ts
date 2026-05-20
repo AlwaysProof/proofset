@@ -6,7 +6,12 @@
 // (e.g., node:fs, node:path, Buffer, process). Use only standard Web APIs
 // (SubtleCrypto, TextEncoder, Uint8Array, etc.).
 
-export { createProofset } from './proofset.js';
+export {
+  createProofset,
+  buildDetailsFile,
+  parseProofsetSeedFromDetails,
+  generateProofsetSeed,
+} from './proofset.js';
 export { createSimpleProofset } from './simple-proofset.js';
 export {
   inferAlgorithm,

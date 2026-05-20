@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import { createProofset, verifyFileDetailsLine, verifyHashsetHash, verifyFileDetailsHashInList } from '../src/index.js';
 import type { SourceFileEntry } from '../src/index.js';
 
-// Test vectors from `proofset create -s example1/source-files -o example1-output -p abc`
+// Test vectors from `proofset create -s example1/source-files -o example1-output --proofset-seed abc`
 // Same 3 source files as the original spec example, processed with the current tool:
 //   - Path mode: relative path + filename only (not v1 absolute paths)
 //   - All hashes lowercase
@@ -89,7 +89,7 @@ const expectedHashsetHash = 'ea361143c639c8f51b8a89ce1891c25d8809edd0e406aa1adf3
 describe('createProofset', () => {
   it('produces correct file_details_hashes for all 6 entries', async () => {
     const result = await createProofset(iterFiles(testFiles), {
-      seedPassword: 'abc',
+      proofsetSeed: 'abc',
       algorithm: 'SHA-256',
     });
 
@@ -101,7 +101,7 @@ describe('createProofset', () => {
 
   it('produces correct file_secret chain', async () => {
     const result = await createProofset(iterFiles(testFiles), {
-      seedPassword: 'abc',
+      proofsetSeed: 'abc',
       algorithm: 'SHA-256',
     });
 
@@ -112,7 +112,7 @@ describe('createProofset', () => {
 
   it('produces correct content hashes (all lowercase)', async () => {
     const result = await createProofset(iterFiles(testFiles), {
-      seedPassword: 'abc',
+      proofsetSeed: 'abc',
       algorithm: 'SHA-256',
     });
 
@@ -123,7 +123,7 @@ describe('createProofset', () => {
 
   it('produces correct file paths', async () => {
     const result = await createProofset(iterFiles(testFiles), {
-      seedPassword: 'abc',
+      proofsetSeed: 'abc',
       algorithm: 'SHA-256',
     });
 
@@ -134,7 +134,7 @@ describe('createProofset', () => {
 
   it('produces correct hashset_hash', async () => {
     const result = await createProofset(iterFiles(testFiles), {
-      seedPassword: 'abc',
+      proofsetSeed: 'abc',
       algorithm: 'SHA-256',
     });
 
@@ -143,7 +143,7 @@ describe('createProofset', () => {
 
   it('produces correct file_details_hash_list with \\r\\n terminators', async () => {
     const result = await createProofset(iterFiles(testFiles), {
-      seedPassword: 'abc',
+      proofsetSeed: 'abc',
       algorithm: 'SHA-256',
     });
 
@@ -153,7 +153,7 @@ describe('createProofset', () => {
 
   it('fileDetailsLineList contains properly formatted lines (all lowercase hex)', async () => {
     const result = await createProofset(iterFiles(testFiles), {
-      seedPassword: 'abc',
+      proofsetSeed: 'abc',
       algorithm: 'SHA-256',
     });
 
@@ -172,7 +172,7 @@ describe('createProofset', () => {
     }));
 
     const result = await createProofset(iterFiles(filesNoFull), {
-      seedPassword: 'abc',
+      proofsetSeed: 'abc',
       algorithm: 'SHA-256',
     });
 
@@ -183,7 +183,7 @@ describe('createProofset', () => {
 describe('verification', () => {
   it('verifyFileDetailsLine validates correct detail lines', async () => {
     const result = await createProofset(iterFiles(testFiles), {
-      seedPassword: 'abc',
+      proofsetSeed: 'abc',
       algorithm: 'SHA-256',
     });
 
@@ -196,7 +196,7 @@ describe('verification', () => {
 
   it('verifyFileDetailsLine detects tampered detail lines', async () => {
     const result = await createProofset(iterFiles(testFiles), {
-      seedPassword: 'abc',
+      proofsetSeed: 'abc',
       algorithm: 'SHA-256',
     });
 
@@ -208,7 +208,7 @@ describe('verification', () => {
 
   it('verifyHashsetHash validates correct hashset_hash', async () => {
     const result = await createProofset(iterFiles(testFiles), {
-      seedPassword: 'abc',
+      proofsetSeed: 'abc',
       algorithm: 'SHA-256',
     });
 
@@ -218,7 +218,7 @@ describe('verification', () => {
 
   it('verifyHashsetHash rejects wrong hashset_hash', async () => {
     const result = await createProofset(iterFiles(testFiles), {
-      seedPassword: 'abc',
+      proofsetSeed: 'abc',
       algorithm: 'SHA-256',
     });
 
@@ -228,7 +228,7 @@ describe('verification', () => {
 
   it('verifyFileDetailsHashInList finds existing file_details_hash', async () => {
     const result = await createProofset(iterFiles(testFiles), {
-      seedPassword: 'abc',
+      proofsetSeed: 'abc',
       algorithm: 'SHA-256',
     });
 
@@ -239,7 +239,7 @@ describe('verification', () => {
 
   it('verifyFileDetailsHashInList rejects missing file_details_hash', async () => {
     const result = await createProofset(iterFiles(testFiles), {
-      seedPassword: 'abc',
+      proofsetSeed: 'abc',
       algorithm: 'SHA-256',
     });
 

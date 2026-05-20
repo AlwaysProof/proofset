@@ -1,6 +1,6 @@
 {
   "name": "@alwaysproof/proofset",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "license": "MIT",
   "description": "Create and verify cryptographic proof sets for file integrity — library and CLI",
   "keywords": [
@@ -63,6 +63,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@inquirer/password": "^5.0.13",
     "commander": "^13.0.0",
     "fast-glob": "^3.3.0"
   },
